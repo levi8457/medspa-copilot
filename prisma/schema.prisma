@@ -1,0 +1,358 @@
+// Prisma Schema - 医美 AI 智能管家
+// 多租户架构：所有业务表必须包含 orgId
+// SQLite 版本（开发测试用）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ==================== 认证相关 ====================
+
+enum UserRole {
+  super_admin   // 平台超级管理员
+  org_admin     // 机构管理员
+  consultant    // 咨询师
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String   // 机构名称
+  slug        String?  @unique // 机构标识
+  logo        String?  // Logo URL
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  customers   Customer[]
+  sops        SopTemplate[]
+  tagSchemas  TagSchema[]
+  auditLogs   AuditLog[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  orgId         String
+  email         String   @unique
+  name          String?
+  password      String?  // hashed password
+  role          UserRole @default(consultant)
+  avatar        String?
+  phone         String?
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customers     Customer[]   @relation("ConsultantCustomers")
+  audioRecords  AudioRecord[]
+  followUpTasks FollowUpTask[]
+  auditLogs     AuditLog[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@index([orgId])
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== 业务核心模型 ====================
+
+model Customer {
+  id              String   @id @default(cuid())
+  orgId           String
+  consultantId    String
+  name            String
+  phone           String?
+  wechat          String?
+  age             Int?
+  gender          String?
+  source          String?  // 来源渠道
+  status          String   @default("lead") // lead, contacted, negotiating, converted, churned
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  consultant      User         @relation("ConsultantCustomers", fields: [consultantId], references: [id], onDelete: Cascade)
+  tags            CustomerTag[]
+  audioRecords    AudioRecord[]
+  followUpPlans   FollowUpPlan[]
+  timelineEvents  TimelineEvent[]
+  consumptionRecords ConsumptionRecord[]
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([status])
+  @@map("customers")
+}
+
+model CustomerTag {
+  id             String   @id @default(cuid())
+  customerId     String
+  orgId          String
+  dimension      String   // 标签维度
+  value          String   // 标签值
+  confidence     Float?
+  sourceText     String?
+  sourceOffset   Int?
+  audioRecordId  String?
+  isManuallyModified Boolean @default(false)
+  modifiedBy     String?
+  modifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  audioRecord    AudioRecord? @relation(fields: [audioRecordId], references: [id])
+
+  @@unique([customerId, dimension])
+  @@index([customerId])
+  @@index([orgId])
+  @@index([dimension])
+  @@map("customer_tags")
+}
+
+model AudioRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String
+  fileName        String
+  fileSize        Int
+  duration        Int      // 秒
+  ossUrl          String   // OSS 存储 URL
+  transcript      String?
+  speakerDiary    String?  // JSON 字符串
+  status          String   @default("pending")
+  errorMessage    String?
+  analyzedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  consultant      User     @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  tags            CustomerTag[]
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([status])
+  @@map("audio_records")
+}
+
+model FollowUpPlan {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  title           String
+  description     String?
+  strategy        String?  // JSON 字符串
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tasks           FollowUpTask[]
+
+  @@index([orgId])
+  @@index([customerId])
+  @@map("follow_up_plans")
+}
+
+model FollowUpTask {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  customerId      String
+  consultantId    String
+  scheduledDate   DateTime
+  priority        Int      @default(0)
+  goal            String?
+  script          String?
+  status          String   @default("pending")
+  skipReason      String?
+  executedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  plan            FollowUpPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  consultant      User         @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("follow_up_tasks")
+}
+
+model TimelineEvent {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  type            String
+  title           String
+  content         String?
+  metadata        String?  // JSON 字符串
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([occurredAt])
+  @@map("timeline_events")
+}
+
+model ConsumptionRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  amount          Float
+  items           String?  // JSON 字符串
+  notes           String?
+  consumedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@map("consumption_records")
+}
+
+// ==================== SOP 管理 ====================
+
+enum SopStatus {
+  draft
+  submitted
+  approved
+  rejected
+}
+
+model SopTemplate {
+  id              String    @id @default(cuid())
+  orgId           String
+  creatorId       String
+  name            String
+  description     String?
+  category        String?
+  stages          String    // JSON 字符串
+  status          SopStatus @default(draft)
+  reviewComment   String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  isActive        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([status])
+  @@map("sop_templates")
+}
+
+model TagSchema {
+  id              String   @id @default(cuid())
+  orgId           String
+  dimension       String
+  values          String   // JSON 字符串
+  isRequired      Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, dimension])
+  @@index([orgId])
+  @@map("tag_schemas")
+}
+
+// ==================== 审计日志 ====================
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  orgId           String
+  userId          String?
+  action          String
+  resourceType    String
+  resourceId      String?
+  oldValue        String?  // JSON 字符串
+  newValue        String?  // JSON 字符串
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

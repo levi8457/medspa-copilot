@@ -1,0 +1,64 @@
+:root {
+  --background: #0A0E1A;
+  --background-secondary: #0D1326;
+  --background-card: rgba(13, 19, 38, 0.7);
+  --background-glass: rgba(13, 19, 38, 0.5);
+
+  --primary: #00E5FF;
+  --primary-dim: rgba(0, 229, 255, 0.15);
+  --primary-glow: 0 0 20px rgba(0, 229, 255, 0.3);
+
+  --accent: #7C4DFF;
+  --accent-dim: rgba(124, 77, 255, 0.15);
+  --accent-glow: 0 0 20px rgba(124, 77, 255, 0.3);
+
+  --success: #00FFA3;
+  --success-dim: rgba(0, 255, 163, 0.15);
+  --warning: #FFB300;
+  --warning-dim: rgba(255, 179, 0, 0.15);
+  --danger: #FF4D6A;
+  --danger-dim: rgba(255, 77, 106, 0.15);
+
+  --foreground: #E8EDF5;
+  --foreground-secondary: #8892A8;
+  --foreground-muted: #5A6482;
+
+  --gradient-primary: linear-gradient(135deg, #00E5FF, #7C4DFF);
+  --gradient-success: linear-gradient(135deg, #00FFA3, #00E5FF);
+  --gradient-warning: linear-gradient(135deg, #FFB300, #FF4D6A);
+
+  --border: rgba(232, 237, 245, 0.08);
+  --border-hover: rgba(232, 237, 245, 0.16);
+  --border-glow: 0 0 0 1px rgba(0, 229, 255, 0.2);
+  --border-glow-hover: 0 0 0 1px rgba(0, 229, 255, 0.5);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.4);
+
+  --font-sans: 'Inter', 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+.light {
+  --background: #F0F2F8;
+  --background-secondary: #E8ECF4;
+  --background-card: rgba(255, 255, 255, 0.85);
+  --background-glass: rgba(255, 255, 255, 0.55);
+
+  --foreground: #1A1F2E;
+  --foreground-secondary: #5A6482;
+  --foreground-muted: #8892A8;
+
+  --border: rgba(26, 31, 46, 0.08);
+  --border-hover: rgba(26, 31, 46, 0.16);
+}

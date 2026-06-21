@@ -1,0 +1,78 @@
+$ next dev
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.3.166:3000
+- Environments: .env.local
+✓ Ready in 524ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+[33m[auth][warn][debug-enabled][0m Read more: https://warnings.authjs.dev
+ GET / 200 in 1254ms (next.js: 295ms, proxy.ts: 278ms, application-code: 681ms)
+ GET / 200 in 313ms (next.js: 19ms, proxy.ts: 96ms, application-code: 199ms)
+ GET / 200 in 344ms (next.js: 14ms, proxy.ts: 48ms, application-code: 282ms)
+ GET / 200 in 186ms (next.js: 6ms, proxy.ts: 20ms, application-code: 160ms)
+ GET /login 200 in 261ms (next.js: 61ms, proxy.ts: 8ms, application-code: 192ms)
+[33m[auth][warn][debug-enabled][0m Read more: https://warnings.authjs.dev
+[31m[auth][error][0m MissingCSRF: CSRF token was missing during an action callback. Read more at https://errors.authjs.dev#missingcsrf
+    at validateCSRF (E:\1test\medspa-copilot\.next\dev\server\chunks\1423_@auth_core_1ffa9dw._.js:1228:11)
+    at AuthInternal (E:\1test\medspa-copilot\.next\dev\server\chunks\1423_@auth_core_1ffa9dw._.js:5161:282)
+    at async Auth (E:\1test\medspa-copilot\.next\dev\server\chunks\1423_@auth_core_1ffa9dw._.js:5384:34)
+    at async AppRouteRouteModule.do (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:40131)
+    at async AppRouteRouteModule.handle (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:47411)
+    at async responseGenerator (E:\1test\medspa-copilot\.next\dev\server\chunks\1h0h_next_1rk6h-o._.js:18380:38)
+    at async AppRouteRouteModule.handleResponse (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:228552)
+    at async handleResponse (E:\1test\medspa-copilot\.next\dev\server\chunks\1h0h_next_1rk6h-o._.js:18443:32)
+    at async Module.handler (E:\1test\medspa-copilot\.next\dev\server\chunks\1h0h_next_1rk6h-o._.js:18497:13)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\base-server.js:1462:9)
+    at async DevServer.renderPageComponent (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\base-server.js:1514:24)
+    at async DevServer.renderToResponseImpl (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\base-server.js:1564:32)
+    at async DevServer.pipeImpl (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\base-server.js:1044:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\base-server.js:935:17)
+    at async E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\lib\router-server.js:266:21)
+    at async handleRequest (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\lib\router-server.js:465:24)
+    at async requestHandlerImpl (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\lib\router-server.js:514:13)
+    at async Server.requestListener (E:\1test\medspa-copilot\node_modules\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\server\lib\start-server.js:225:13)
+ POST /api/auth/callback/credentials 302 in 1599ms (next.js: 1510ms, proxy.ts: 19ms, application-code: 69ms)
+ GET /login 200 in 79ms (next.js: 3ms, proxy.ts: 11ms, application-code: 66ms)
+⨯ Error: Module [project]/node_modules/.pnpm/@auth+prisma-adapter@2.11.2_acb7cbca5e770bacb34e5ecb1ec49235/node_modules/@auth/prisma-adapter/index.js [middleware-edge] (ecmascript) was instantiated because it was required from module [project]/src/lib/auth/auth.config.ts [middleware-edge] (ecmascript), but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at instantiateModuleShared (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1272:15)
+    at instantiateModule (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1621:12)
+    at getOrInstantiateModuleFromParent (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1604:12)
+    at DevContext.esmImport [as i] (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:278:20)
+    at module evaluation (src\lib\auth\auth.config.ts:3:1)
+    at <unknown> (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1307:27)
+    at runModuleExecutionHooks (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1649:9)
+    at instantiateModuleShared (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1305:9)
+    at instantiateModule (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1621:12)
+    at getOrInstantiateModuleFromParent (.next\dev\server\edge\chunks\0zjm_next_dist_esm_build_templates_edge-wrapper_1ds-aay.js:1604:12)
+  1 | import type { NextAuthConfig } from "next-auth"
+  2 | import Credentials from "next-auth/providers/credentials"
+> 3 | import { PrismaAdapter } from "@auth/prisma-adapter"
+    | ^
+  4 | import bcrypt from "bcryptjs"
+  5 | import prisma from "@/lib/db"
+  6 |
+ GET / 404 in 883ms (next.js: -197103µs, proxy.ts: 703ms, application-code: 377ms)
+[33m[auth][warn][debug-enabled][0m Read more: https://warnings.authjs.dev
+ GET / 200 in 787ms (next.js: 63ms, proxy.ts: 208ms, application-code: 517ms)
+ GET / 200 in 913ms (next.js: 154ms, proxy.ts: 211ms, application-code: 547ms)
+[?25h
+
+E:\1test\medspa-copilot>node  "E:\1test\medspa-copilot\node_modules\.bin\\..\.pnpm\next@16.2.9_@babel+core@7.2_ff5cf81a912fbaa1808ad69d3fec28b2\node_modules\next\dist\bin\next" dev 
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.3.166:3000
+- Environments: .env.local
+✓ Ready in 698ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+[33m[auth][warn][debug-enabled][0m Read more: https://warnings.authjs.dev
+ GET / 200 in 1159ms (next.js: 289ms, proxy.ts: 291ms, application-code: 579ms)
+[?25h
+[ELIFECYCLE] Command failed with exit code 1.
