@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials"
 // Edge-compatible auth config (no Node.js modules: no Prisma, no bcrypt)
 // Used by middleware.ts which runs in edge runtime
 export const authConfig = {
+  trustHost: true,
   session: {
     strategy: "jwt" as const,
   },
