@@ -42,11 +42,24 @@ export async function PATCH(
         },
       })
     } else if (type === "tag") {
-      // 标签审核逻辑（示例）
-      // 实际应该更新 CustomerTag 的审核状态
+      // 标签审核：标记为人工修改，记录修改人和时间；驳回时置信度置 0
+      await prisma.customerTag.update({
+        where: { id },
+        data: {
+          isManuallyModified: true,
+          modifiedBy: userId,
+          modifiedAt: new Date(),
+          ...(action === "reject" && { confidence: 0 }),
+        },
+      })
     } else if (type === "strategy") {
-      // 策略审核逻辑（示例）
-      // 实际应该更新 FollowUpPlan 的审核状态
+      // 策略审核：通过置 active，驳回置 rejected
+      await prisma.followUpPlan.update({
+        where: { id },
+        data: {
+          status: action === "approve" ? "active" : "rejected",
+        },
+      })
     }
 
     // 记录审计日志

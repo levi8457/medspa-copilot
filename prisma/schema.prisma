@@ -25,6 +25,8 @@ model Organization {
   slug        String?  @unique // 机构标识
   logo        String?  // Logo URL
   isActive    Boolean  @default(true)
+  scriptConfig    String?  // 话术风格配置 JSON
+  notificationConfig String? // 通知配置 JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -34,6 +36,11 @@ model Organization {
   sops        SopTemplate[]
   tagSchemas  TagSchema[]
   auditLogs   AuditLog[]
+  subscriptions Subscription[]
+  orders      Order[]
+  usageRecords  UsageRecord[]
+  leadSources    LeadSource[]
+  leadAssignmentRules LeadAssignmentRule[]
 
   @@index([slug])
   @@map("organizations")
@@ -113,7 +120,7 @@ model VerificationToken {
 model Customer {
   id              String   @id @default(cuid())
   orgId           String
-  consultantId    String
+  consultantId    String?
   name            String
   phone           String?
   wechat          String?
@@ -127,10 +134,11 @@ model Customer {
 
   // Relations
   organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  consultant      User         @relation("ConsultantCustomers", fields: [consultantId], references: [id], onDelete: Cascade)
+  consultant      User?        @relation("ConsultantCustomers", fields: [consultantId], references: [id], onDelete: SetNull)
   tags            CustomerTag[]
   audioRecords    AudioRecord[]
   followUpPlans   FollowUpPlan[]
+  followUpTasks   FollowUpTask[]
   timelineEvents  TimelineEvent[]
   consumptionRecords ConsumptionRecord[]
 
@@ -234,6 +242,7 @@ model FollowUpTask {
   // Relations
   plan            FollowUpPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   consultant      User         @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([orgId])
   @@index([consultantId])
@@ -331,6 +340,42 @@ model TagSchema {
   @@map("tag_schemas")
 }
 
+model LeadSource {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  code            String
+  description     String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, code])
+  @@index([orgId])
+  @@map("lead_sources")
+}
+
+model LeadAssignmentRule {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  type            String   // round_robin / load_balanced / manual / rule_based
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true)
+  config          String?  // JSON 配置
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([priority])
+  @@map("lead_assignment_rules")
+}
+
 // ==================== 审计日志 ====================
 
 model AuditLog {
@@ -355,4 +400,121 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ==================== 计费系统 ====================
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   // 套餐名称
+  description     String?
+  maxSeats        Int      @default(5)     // 最大咨询师席位
+  maxRecordingHours Int    @default(10)    // 月录音时长配额（小时）
+  maxAiCalls      Int      @default(100)   // 月 AI 调用次数配额
+  maxStorage      Int      @default(5)     // 存储配额（GB）
+  priceMonthly    Float    @default(0) // 月价格（切 PG 后改 Decimal(10,2)）
+  priceYearly     Float    @default(0) // 年价格
+  trialDays       Int      @default(14)   // 试用天数
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  subscriptions   Subscription[]
+  orders          Order[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  status          String   @default("trial") // trial / active / suspended / expired / cancelled
+  seatsUsed       Int      @default(0)
+  seatsLimit      Int      @default(5)
+  startsAt        DateTime
+  endsAt          DateTime?
+  trialEndsAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+
+  @@index([orgId])
+  @@index([planId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  type            String   // new / renew / upgrade
+  amount          Float    // 金额
+  period          String   // monthly / yearly
+  status          String   @default("pending") // pending / paid / cancelled / refunded
+  paidAt          DateTime?
+  paidBy          String?  // 支付人 userId
+  paymentMethod   String?  // wechat / alipay / offline
+  paymentNo       String?  // 第三方支付流水号
+  invoiceNo       String?  // 发票号
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+  payments        Payment[]
+
+  @@index([orgId])
+  @@index([planId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  orderId         String
+  amount          Float    // 金额
+  method          String   // wechat / alipay / offline
+  status          String   @default("pending") // pending / success / failed / refunded
+  transactionNo   String?  // 第三方流水号
+  paidAt          DateTime?
+  rawResponse     String?  // 原始支付回调 JSON
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([transactionNo])
+  @@map("payments")
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  type            String   // asr_hours / ai_calls / storage_gb / active_users
+  date            DateTime
+  value           Float
+  createdAt       DateTime @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, type, date])
+  @@index([orgId])
+  @@index([type])
+  @@index([date])
+  @@map("usage_records")
 }

@@ -31,7 +31,7 @@ function StageNodeComponent({ id, data, selected }: NodeProps & { data: StageNod
     <div
       className={`relative min-w-[240px] max-w-[300px] rounded-xl border-2 transition-all duration-200 ${
         selected
-          ? "border-[var(--primary)] shadow-[0_0_20px_rgba(0,229,255,0.3)]"
+          ? "border-[var(--primary)] shadow-[var(--glow-primary-lg)]"
           : "border-[var(--border)] hover:border-[var(--primary)]/50"
       } bg-[var(--card)] backdrop-blur-sm`}
     >

@@ -41,7 +41,11 @@ export default function ReviewCenterPage() {
     fetchReviewItems()
   }, [])
 
-  const handleReview = async (id: string, action: "approve" | "reject") => {
+  const handleReview = async (
+    id: string,
+    action: "approve" | "reject",
+    type: "sop" | "tag" | "strategy"
+  ) => {
     try {
       await fetch(`/api/review/${id}`, {
         method: "PATCH",
@@ -49,6 +53,7 @@ export default function ReviewCenterPage() {
         body: JSON.stringify({
           action,
           comment: reviewComment,
+          type,
         }),
       })
       setSelectedItem(null)
@@ -243,14 +248,14 @@ export default function ReviewCenterPage() {
                     取消
                   </button>
                   <button
-                    onClick={() => handleReview(selectedItem.id, "reject")}
+                    onClick={() => handleReview(selectedItem.id, "reject", selectedItem.type)}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--danger)]/20 text-[var(--danger)] rounded-lg font-medium hover:bg-[var(--danger)]/30 transition-colors"
                   >
                     <XCircle className="w-4 h-4" />
                     驳回
                   </button>
                   <button
-                    onClick={() => handleReview(selectedItem.id, "approve")}
+                    onClick={() => handleReview(selectedItem.id, "approve", selectedItem.type)}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--success)]/20 text-[var(--success)] rounded-lg font-medium hover:bg-[var(--success)]/30 transition-colors"
                   >
                     <CheckCircle className="w-4 h-4" />

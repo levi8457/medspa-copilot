@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { withTenantFilter, getUserId } from "@/lib/db-tenant"
 import { addAudioProcessingJob } from "@/lib/queue"
 import { processAudioJob } from "@/workers/audio-processor"
+import { uploadToOSS, generateRecordingKey } from "@/lib/oss"
 
 // GET - 获取录音列表
 export async function GET(request: NextRequest) {
@@ -93,8 +94,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: { code: "CUSTOMER_NOT_FOUND", message: "客户不存在" } }, { status: 404 })
     }
 
-    // TODO: 上传到 OSS (目前使用 mock URL)
-    const ossUrl = `mock://recordings/${Date.now()}-${file.name}`
+    // 上传到 OSS
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    const ossKey = generateRecordingKey(file.name, session.user.orgId)
+    const ossUrl = await uploadToOSS(fileBuffer, ossKey)
 
     // 创建录音记录
     const recording = await prisma.audioRecord.create({

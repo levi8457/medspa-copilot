@@ -13,7 +13,7 @@ interface Consultant {
 interface TransferModalProps {
   customerId: string
   customerName: string
-  currentConsultantId?: string
+  currentConsultantId?: string | null
   isOpen: boolean
   onClose: () => void
   onTransfer: () => void

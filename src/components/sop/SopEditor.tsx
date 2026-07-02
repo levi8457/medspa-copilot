@@ -187,7 +187,7 @@ export function SopEditor({ initialStages = [], onChange, readOnly = false }: So
         <MiniMap
           className="!bg-[var(--card)] !border-[var(--border)] !rounded-lg"
           nodeColor="var(--primary)"
-          maskColor="rgba(0, 0, 0, 0.5)"
+          maskColor="var(--overlay)"
         />
       </ReactFlow>
 

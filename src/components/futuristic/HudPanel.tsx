@@ -12,12 +12,21 @@ interface HudPanelProps {
   trend?: "up" | "down" | "neutral"
   trendValue?: string
   className?: string
+  variant?: "primary" | "success" | "warning" | "danger" | "accent"
 }
 
 const trendColors = {
-  up: "text-[#00FFA3]",
-  down: "text-[#FF4D6A]",
-  neutral: "text-[#FFB300]",
+  up: "text-[var(--success)]",
+  down: "text-[var(--danger)]",
+  neutral: "text-[var(--warning)]",
+}
+
+const variantStyles = {
+  primary: "border-[var(--primary)]/30 hover:border-[var(--primary)]/60",
+  success: "border-[var(--success)]/30 hover:border-[var(--success)]/60",
+  warning: "border-[var(--warning)]/30 hover:border-[var(--warning)]/60",
+  danger: "border-[var(--danger)]/30 hover:border-[var(--danger)]/60",
+  accent: "border-[var(--accent)]/30 hover:border-[var(--accent)]/60",
 }
 
 export function HudPanel({
@@ -28,15 +37,17 @@ export function HudPanel({
   trend,
   trendValue,
   className,
+  variant = "primary",
 }: HudPanelProps) {
   const isNumeric = typeof value === "number" || (typeof value === "string" && !isNaN(Number(value)))
 
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-1 rounded-lg border border-[var(--border)]",
+        "relative flex flex-col gap-1 rounded-lg border",
         "bg-[var(--background-glass)] backdrop-blur-xl p-4",
-        "transition-all duration-250 hover:border-[var(--border-hover)]",
+        "transition-all duration-250",
+        variantStyles[variant],
         className,
       )}
     >

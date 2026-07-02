@@ -23,9 +23,21 @@
   --foreground-secondary: #8892A8;
   --foreground-muted: #5A6482;
 
-  --gradient-primary: linear-gradient(135deg, #00E5FF, #7C4DFF);
-  --gradient-success: linear-gradient(135deg, #00FFA3, #00E5FF);
-  --gradient-warning: linear-gradient(135deg, #FFB300, #FF4D6A);
+  --gradient-primary: linear-gradient(135deg, var(--primary), var(--accent));
+  --gradient-success: linear-gradient(135deg, var(--success), var(--primary));
+  --gradient-warning: linear-gradient(135deg, var(--warning), var(--danger));
+
+  /* glow shadow 变量 —— 用于 GlowCard / EnergyRing 等发光效果 */
+  --glow-primary-sm: 0 0 12px rgba(0, 229, 255, 0.15);
+  --glow-primary-lg: 0 0 24px rgba(0, 229, 255, 0.3);
+  --glow-accent-sm: 0 0 12px rgba(124, 77, 255, 0.15);
+  --glow-accent-lg: 0 0 24px rgba(124, 77, 255, 0.3);
+  --glow-success-sm: 0 0 12px rgba(0, 255, 163, 0.15);
+  --glow-success-lg: 0 0 24px rgba(0, 255, 163, 0.3);
+  --glow-warning-sm: 0 0 12px rgba(255, 179, 0, 0.15);
+  --glow-warning-lg: 0 0 24px rgba(255, 179, 0, 0.3);
+  --glow-danger-sm: 0 0 12px rgba(255, 77, 106, 0.15);
+  --glow-danger-lg: 0 0 24px rgba(255, 77, 106, 0.3);
 
   --border: rgba(232, 237, 245, 0.08);
   --border-hover: rgba(232, 237, 245, 0.16);
@@ -40,6 +52,7 @@
 
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
   --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.5);
 
   --font-sans: 'Inter', 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;

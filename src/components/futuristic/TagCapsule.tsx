@@ -15,11 +15,11 @@ interface TagCapsuleProps {
 }
 
 const variantStyles = {
-  primary: "bg-[var(--primary-dim)] text-[#00E5FF] border-[#00E5FF]/30",
-  accent: "bg-[var(--accent-dim)] text-[#7C4DFF] border-[#7C4DFF]/30",
-  success: "bg-[var(--success-dim)] text-[#00FFA3] border-[#00FFA3]/30",
-  warning: "bg-[var(--warning-dim)] text-[#FFB300] border-[#FFB300]/30",
-  danger: "bg-[var(--danger-dim)] text-[#FF4D6A] border-[#FF4D6A]/30",
+  primary: "bg-[var(--primary-dim)] text-[var(--primary)] border-[var(--primary)]/30",
+  accent: "bg-[var(--accent-dim)] text-[var(--accent)] border-[var(--accent)]/30",
+  success: "bg-[var(--success-dim)] text-[var(--success)] border-[var(--success)]/30",
+  warning: "bg-[var(--warning-dim)] text-[var(--warning)] border-[var(--warning)]/30",
+  danger: "bg-[var(--danger-dim)] text-[var(--danger)] border-[var(--danger)]/30",
   neutral: "bg-[var(--border)] text-[var(--foreground-secondary)] border-[var(--border)]",
 }
 

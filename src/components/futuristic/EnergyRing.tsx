@@ -15,11 +15,11 @@ interface EnergyRingProps {
 }
 
 const ringColors = {
-  primary: { stroke: "#00E5FF", glow: "rgba(0,229,255,0.3)" },
-  accent: { stroke: "#7C4DFF", glow: "rgba(124,77,255,0.3)" },
-  success: { stroke: "#00FFA3", glow: "rgba(0,255,163,0.3)" },
-  warning: { stroke: "#FFB300", glow: "rgba(255,179,0,0.3)" },
-  danger: { stroke: "#FF4D6A", glow: "rgba(255,77,106,0.3)" },
+  primary: { stroke: "var(--primary)", glow: "var(--primary-dim)" },
+  accent: { stroke: "var(--accent)", glow: "var(--accent-dim)" },
+  success: { stroke: "var(--success)", glow: "var(--success-dim)" },
+  warning: { stroke: "var(--warning)", glow: "var(--warning-dim)" },
+  danger: { stroke: "var(--danger)", glow: "var(--danger-dim)" },
 }
 
 export function EnergyRing({
@@ -47,7 +47,7 @@ export function EnergyRing({
           cy={center}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.05)"
+          stroke="var(--border)"
           strokeWidth={strokeWidth}
         />
         <motion.circle

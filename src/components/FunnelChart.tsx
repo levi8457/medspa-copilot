@@ -2,18 +2,34 @@
 
 import ReactECharts from "echarts-for-react"
 
-interface FunnelChartProps {
-  data: Array<{ name: string; value: number }>
+/** 从 DOM 读取 CSS 变量的实际值 */
+function cssVar(name: string): string {
+  if (typeof window === "undefined") return ""
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-export function FunnelChart({ data }: FunnelChartProps) {
+interface FunnelChartProps {
+  data: Array<{ name: string; value: number; rate?: number }>
+  showRate?: boolean
+}
+
+export function FunnelChart({ data, showRate = false }: FunnelChartProps) {
+  const c = {
+    bg: cssVar("--background-secondary"),
+    fg: cssVar("--foreground"),
+    primary: cssVar("--primary"),
+    accent: cssVar("--accent"),
+    success: cssVar("--success"),
+    warning: cssVar("--warning"),
+  }
+
   const option = {
     tooltip: {
       trigger: "item",
       formatter: "{b}: {c}",
-      backgroundColor: "rgba(13, 19, 38, 0.9)",
-      borderColor: "rgba(0, 229, 255, 0.3)",
-      textStyle: { color: "#E8EDF5" },
+      backgroundColor: c.bg,
+      borderColor: c.primary,
+      textStyle: { color: c.fg },
     },
     series: [
       {
@@ -32,25 +48,24 @@ export function FunnelChart({ data }: FunnelChartProps) {
         label: {
           show: true,
           position: "inside",
-          formatter: "{b}\n{c}",
-          color: "#000000",
+          formatter: (params: any) => {
+            const rate = params.data.rate
+            return showRate && rate !== undefined
+              ? `${params.name}\n${params.value} (${rate}%)`
+              : `${params.name}\n${params.value}`
+          },
+          color: c.bg,
           fontSize: 13,
           fontWeight: "bold",
         },
         itemStyle: {
-          borderColor: "#0A0E1A",
+          borderColor: c.bg,
           borderWidth: 2,
         },
         data: data.map((item, index) => ({
           ...item,
           itemStyle: {
-            color: index === 0
-              ? "#00E5FF"
-              : index === 1
-              ? "#7C4DFF"
-              : index === 2
-              ? "#00FFA3"
-              : "#FFB300",
+            color: [c.primary, c.accent, c.success, c.warning][index % 4],
           },
         })),
       },

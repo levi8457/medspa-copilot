@@ -115,15 +115,134 @@ function createMockASR(): ASRProvider {
 
 /**
  * 阿里云 ASR 供应商
+ * 使用阿里云 Paraformer 录音文件识别 API
+ * 文档: https://help.aliyun.com/document_detail/90727.html
  */
 function createAliyunASR(): ASRProvider {
   return {
     name: "aliyun",
     async transcribe(audioUrl: string, options?: ASROptions): Promise<ASRResult> {
-      // TODO: 实现阿里云 Paraformer ASR 集成
-      // 参考文档: https://help.aliyun.com/document_detail/84428.html
-      throw new Error("阿里云 ASR 尚未实现，请使用 mock 模式或配置其他供应商")
+      const apiKey = process.env.ASR_API_KEY
+      const appId = process.env.ASR_APP_ID
+
+      if (!apiKey || !appId) {
+        throw new Error("阿里云 ASR 未配置：请设置 ASR_API_KEY 和 ASR_APP_ID")
+      }
+
+      // 提交录音文件识别任务
+      const submitUrl = "https://nls-gateway.cn-shanghai.aliyuncs.com/dictation/asr/transcribe"
+
+      const submitResponse = await fetch(submitUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-NLS-Token": apiKey,
+        },
+        body: JSON.stringify({
+          appkey: appId,
+          file_link: audioUrl,
+          version: "4.0",
+          enable_words: false,
+          enable_sample_rate_adaptive: true,
+          enable_speaker_diarization: options?.enableSpeakerDiarization ?? true,
+          speaker_count: options?.speakerCount,
+          hotwords_id: process.env.ASR_HOTWORDS_ID,
+          hotwords_threshold: 0.8,
+        }),
+      })
+
+      if (!submitResponse.ok) {
+        throw new Error(`阿里云 ASR 提交失败: ${submitResponse.status} ${submitResponse.statusText}`)
+      }
+
+      const submitData = await submitResponse.json()
+
+      if (submitData.status !== "SUCCESS" || !submitData.task_id) {
+        throw new Error(`阿里云 ASR 提交失败: ${JSON.stringify(submitData)}`)
+      }
+
+      // 轮询任务状态
+      const taskId = submitData.task_id
+      const pollInterval = 3000 // 3 秒
+      const maxAttempts = 60 // 最多等待 3 分钟
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval))
+
+        const pollUrl = `${submitUrl}?task_id=${taskId}&appkey=${appId}`
+        const pollResponse = await fetch(pollUrl, {
+          headers: { "X-NLS-Token": apiKey },
+        })
+
+        if (!pollResponse.ok) {
+          throw new Error(`阿里云 ASR 查询失败: ${pollResponse.status}`)
+        }
+
+        const pollData = await pollResponse.json()
+
+        if (pollData.status === "SUCCESS") {
+          return parseAliyunASRResult(pollData, options)
+        }
+
+        if (pollData.status === "FAILED") {
+          throw new Error(`阿里云 ASR 处理失败: ${pollData.message || "未知错误"}`)
+        }
+
+        // 继续等待
+      }
+
+      throw new Error("阿里云 ASR 处理超时")
     },
+  }
+}
+
+/**
+ * 解析阿里云 ASR 返回结果
+ */
+function parseAliyunASRResult(data: Record<string, unknown>, options?: ASROptions): ASRResult {
+  const result = data.result as Record<string, unknown> | undefined
+
+  if (!result || !Array.isArray(result.sentences)) {
+    return {
+      transcript: "",
+      speakerDiarization: [],
+      duration: 0,
+      confidence: 0,
+    }
+  }
+
+  const sentences = result.sentences as Array<Record<string, unknown>>
+  const duration = (result.duration as number) || 0
+
+  const segments: SpeakerSegment[] = sentences.map((sentence) => {
+    const speakerId = sentence.speaker_id as number | undefined
+    // 偶数 speaker_id 为咨询师，奇数为客户（可根据实际情况调整）
+    const speaker: "customer" | "consultant" | "unknown" =
+      speakerId === undefined
+        ? "unknown"
+        : speakerId % 2 === 0
+        ? "consultant"
+        : "customer"
+
+    return {
+      speaker,
+      text: (sentence.text as string) || "",
+      startTime: (sentence.begin_time as number) || 0,
+      endTime: (sentence.end_time as number) || 0,
+      confidence: (sentence.confidence as number) || 0.9,
+    }
+  })
+
+  const transcript = segments.map((seg) => seg.text).join("")
+  const avgConfidence = segments.length > 0
+    ? segments.reduce((sum, seg) => sum + seg.confidence, 0) / segments.length
+    : 0
+
+  return {
+    transcript,
+    speakerDiarization: segments,
+    duration,
+    confidence: avgConfidence,
   }
 }
 

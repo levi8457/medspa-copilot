@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, FileAudio, ClipboardList, Settings, LogOut, UserSearch } from "lucide-react"
+import { LayoutDashboard, Users, FileAudio, ClipboardList, Settings, LogOut, UserSearch, TrendingUp, Target } from "lucide-react"
 
 const navigation = [
   { name: "数据看板", href: "/admin/overview", icon: LayoutDashboard },
-  { name: "客户管理", href: "/admin/customers", icon: UserSearch },
-  { name: "团队管理", href: "/admin/team", icon: Users },
+  { name: "线索管理", href: "/admin/leads", icon: UserSearch },
+  { name: "客户管理", href: "/admin/customers", icon: Users },
+  { name: "生命周期", href: "/admin/lifecycle", icon: TrendingUp },
+  { name: "绩效考核", href: "/admin/performance", icon: Target },
   { name: "审核中心", href: "/admin/review", icon: ClipboardList },
   { name: "SOP管理", href: "/admin/sop", icon: FileAudio },
   { name: "系统设置", href: "/admin/settings", icon: Settings },

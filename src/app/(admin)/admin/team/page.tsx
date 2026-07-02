@@ -19,6 +19,7 @@ interface TeamMember {
 }
 
 const emptyForm = { name: "", phone: "", password: "" }
+const emptyEditForm = { name: "", phone: "", role: "consultant" as "consultant" | "org_admin", isActive: true }
 
 export default function TeamManagementPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -33,6 +34,13 @@ export default function TeamManagementPage() {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+
+  // 编辑相关状态
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState(emptyEditForm)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState("")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchTeamData = async () => {
     try {
@@ -84,6 +92,74 @@ export default function TeamManagementPage() {
       setError("网络错误，请稍后重试")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const openEditModal = (member: TeamMember) => {
+    setEditingId(member.id)
+    setEditForm({
+      name: member.name,
+      phone: member.phone,
+      role: member.role as "consultant" | "org_admin",
+      isActive: member.isActive,
+    })
+    setEditError("")
+  }
+
+  const handleEditSave = async () => {
+    if (!editingId) return
+    setEditError("")
+    if (!editForm.name.trim() || !editForm.phone.trim()) {
+      setEditError("请填写姓名和手机号")
+      return
+    }
+
+    setEditSubmitting(true)
+    try {
+      const res = await fetch(`/api/team/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name,
+          phone: editForm.phone,
+          role: editForm.role,
+          isActive: editForm.isActive,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setEditError(data.error?.message || "更新失败")
+        return
+      }
+      setEditingId(null)
+      setEditForm(emptyEditForm)
+      fetchTeamData()
+    } catch {
+      setEditError("网络错误，请稍后重试")
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (member: TeamMember) => {
+    const confirmed = window.confirm(
+      `确定要删除成员「${member.name}」吗？\n该操作将同时删除其名下的客户、录音和跟进任务，且不可恢复。`
+    )
+    if (!confirmed) return
+
+    setDeletingId(member.id)
+    try {
+      const res = await fetch(`/api/team/${member.id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error?.message || "删除失败")
+        return
+      }
+      fetchTeamData()
+    } catch {
+      alert("网络错误，请稍后重试")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -192,10 +268,19 @@ export default function TeamManagementPage() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="p-1.5 hover:bg-[var(--border)] rounded transition-colors">
+                        <button
+                          onClick={() => openEditModal(member)}
+                          className="p-1.5 hover:bg-[var(--border)] rounded transition-colors"
+                          title="编辑成员"
+                        >
                           <Edit className="w-4 h-4 text-[var(--foreground-secondary)]" />
                         </button>
-                        <button className="p-1.5 hover:bg-[var(--danger)]/20 rounded transition-colors">
+                        <button
+                          onClick={() => handleDelete(member)}
+                          disabled={deletingId === member.id}
+                          className="p-1.5 hover:bg-[var(--danger)]/20 rounded transition-colors disabled:opacity-50"
+                          title="删除成员"
+                        >
                           <Trash2 className="w-4 h-4 text-[var(--danger)]" />
                         </button>
                       </div>
@@ -284,6 +369,103 @@ export default function TeamManagementPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--background)] rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {submitting ? "添加中..." : "确认添加"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Member Modal */}
+        <AnimatePresence>
+          {editingId && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={() => setEditingId(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl p-6 w-full max-w-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-medium text-[var(--foreground)]">编辑成员</h2>
+                  <button onClick={() => setEditingId(null)} className="p-1 hover:bg-[var(--border)] rounded transition-colors">
+                    <X className="w-5 h-5 text-[var(--foreground-secondary)]" />
+                  </button>
+                </div>
+
+                {editError && (
+                  <div className="mb-4 p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] text-sm">
+                    {editError}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-[var(--foreground-secondary)] mb-1">姓名</label>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="请输入姓名"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[var(--foreground-secondary)] mb-1">手机号</label>
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      placeholder="请输入手机号"
+                      maxLength={11}
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[var(--foreground-secondary)] mb-1">角色</label>
+                    <select
+                      value={editForm.role}
+                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "consultant" | "org_admin" })}
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+                    >
+                      <option value="consultant">咨询师</option>
+                      <option value="org_admin">机构管理员</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={editForm.isActive}
+                      onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                      className="w-4 h-4 accent-[var(--primary)]"
+                    />
+                    <label htmlFor="isActive" className="text-sm text-[var(--foreground-secondary)] cursor-pointer">
+                      账号启用（取消勾选将停用该账号）
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setEditingId(null)}
+                    className="px-4 py-2 text-[var(--foreground-secondary)] hover:bg-[var(--border)] rounded-lg transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleEditSave}
+                    disabled={editSubmitting}
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--background)] rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {editSubmitting ? "保存中..." : "保存修改"}
                   </button>
                 </div>
               </motion.div>

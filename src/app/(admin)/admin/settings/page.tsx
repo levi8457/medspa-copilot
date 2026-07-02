@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Save, Tag, FileText, Shield, Bell, MessageSquare } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
@@ -19,6 +19,11 @@ interface ScriptConfig {
   brandVoice: string
 }
 
+interface NotificationConfig {
+  dailyTaskReminder: boolean
+  audioParsedNotification: boolean
+}
+
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<"tags" | "sop" | "compliance" | "script" | "notifications">("tags")
   const [tagSchemas, setTagSchemas] = useState<TagSchema[]>([
@@ -34,9 +39,38 @@ export default function AdminSettingsPage() {
     brandVoice: "专业、温暖、值得信赖",
   })
 
+  const [notificationConfig, setNotificationConfig] = useState<NotificationConfig>({
+    dailyTaskReminder: true,
+    audioParsedNotification: true,
+  })
+
   const [newDimension, setNewDimension] = useState("")
   const [newValues, setNewValues] = useState("")
   const [newForbiddenWord, setNewForbiddenWord] = useState("")
+
+  // 加载已保存的配置
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch("/api/settings/tags")
+        const json = await res.json()
+        if (json.success && json.data) {
+          if (json.data.schemas?.length > 0) {
+            setTagSchemas(json.data.schemas)
+          }
+          if (json.data.scriptConfig) {
+            setScriptConfig(json.data.scriptConfig)
+          }
+          if (json.data.notificationConfig) {
+            setNotificationConfig(json.data.notificationConfig)
+          }
+        }
+      } catch (e) {
+        console.error("加载设置失败:", e)
+      }
+    }
+    loadSettings()
+  }, [])
 
   const handleAddTagSchema = () => {
     if (!newDimension || !newValues) return
@@ -80,7 +114,11 @@ export default function AdminSettingsPage() {
       await fetch("/api/settings/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schemas: tagSchemas, scriptConfig }),
+        body: JSON.stringify({
+          schemas: tagSchemas,
+          scriptConfig,
+          notificationConfig,
+        }),
       })
       alert("保存成功")
     } catch (error) {
@@ -285,18 +323,24 @@ export default function AdminSettingsPage() {
                     <h3 className="font-medium text-[var(--foreground)]">每日任务提醒</h3>
                     <p className="text-sm text-[var(--foreground-secondary)]">每日早上 9:00 推送今日待跟进任务</p>
                   </div>
-                  <div className="w-12 h-6 bg-[var(--primary)] rounded-full relative cursor-pointer">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-                  </div>
+                  <button
+                    onClick={() => setNotificationConfig(prev => ({ ...prev, dailyTaskReminder: !prev.dailyTaskReminder }))}
+                    className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${notificationConfig.dailyTaskReminder ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${notificationConfig.dailyTaskReminder ? "right-1" : "left-1"}`} />
+                  </button>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-[var(--background)] rounded-lg border border-[var(--border)]">
                   <div>
                     <h3 className="font-medium text-[var(--foreground)]">录音解析完成通知</h3>
                     <p className="text-sm text-[var(--foreground-secondary)]">录音解析完成后通知咨询师</p>
                   </div>
-                  <div className="w-12 h-6 bg-[var(--primary)] rounded-full relative cursor-pointer">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-                  </div>
+                  <button
+                    onClick={() => setNotificationConfig(prev => ({ ...prev, audioParsedNotification: !prev.audioParsedNotification }))}
+                    className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${notificationConfig.audioParsedNotification ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${notificationConfig.audioParsedNotification ? "right-1" : "left-1"}`} />
+                  </button>
                 </div>
               </div>
             </GlowCard>

@@ -7,7 +7,7 @@ import { TransferModal } from "@/components/TransferModal"
 interface TransferButtonProps {
   customerId: string
   customerName: string
-  currentConsultantId?: string
+  currentConsultantId?: string | null
   onTransfer: () => void
 }
 

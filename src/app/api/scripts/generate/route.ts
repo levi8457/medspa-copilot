@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { validateResourceOwnership } from "@/lib/db-tenant"
 import { generateScript } from "@/lib/ai/generate-script"
+import { complianceCheck } from "@/lib/ai/compliance-check"
 
 // POST - 生成跟进话术
 export async function POST(request: NextRequest) {
@@ -72,14 +73,39 @@ export async function POST(request: NextRequest) {
       customerName: customer?.name || "客户",
     })
 
+    // 独立合规审查 —— 话术生成后必须经过 compliance-check 二次过滤
+    const compliance = await complianceCheck({
+      script: scriptResult.script,
+      customerName: customer?.name || "客户",
+    })
+
+    // 合规审查未通过：拦截话术，不返回给前端
+    if (!compliance.passed) {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: "COMPLIANCE_VIOLATION",
+          message: "话术未通过医疗合规审查，请修改后重试",
+        },
+        data: {
+          violations: compliance.violations,
+          summary: compliance.summary,
+        },
+      })
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         script: scriptResult.script,
         subjectLine: scriptResult.subject_line,
         keyPoints: scriptResult.key_points,
-        compliancePassed: scriptResult.compliance_check.passed,
-        complianceWarnings: scriptResult.compliance_check.warnings,
+        compliancePassed: compliance.passed,
+        complianceRiskLevel: compliance.risk_level,
+        complianceWarnings: compliance.violations
+          .filter((v) => v.type === "warning")
+          .map((v) => `${v.content}：${v.suggestion}`),
+        complianceSummary: compliance.summary,
       },
     })
   } catch (error) {

@@ -9,19 +9,19 @@ interface GlowCardProps extends HTMLMotionProps<"div"> {
 }
 
 const glowVariants = {
-  primary: "shadow-[0_0_12px_rgba(0,229,255,0.15)] hover:shadow-[0_0_24px_rgba(0,229,255,0.3)]",
-  accent: "shadow-[0_0_12px_rgba(124,77,255,0.15)] hover:shadow-[0_0_24px_rgba(124,77,255,0.3)]",
-  success: "shadow-[0_0_12px_rgba(0,255,163,0.15)] hover:shadow-[0_0_24px_rgba(0,255,163,0.3)]",
-  warning: "shadow-[0_0_12px_rgba(255,179,0,0.15)] hover:shadow-[0_0_24px_rgba(255,179,0,0.3)]",
-  danger: "shadow-[0_0_12px_rgba(255,77,106,0.15)] hover:shadow-[0_0_24px_rgba(255,77,106,0.3)]",
+  primary: "shadow-[var(--glow-primary-sm)] hover:shadow-[var(--glow-primary-lg)]",
+  accent: "shadow-[var(--glow-accent-sm)] hover:shadow-[var(--glow-accent-lg)]",
+  success: "shadow-[var(--glow-success-sm)] hover:shadow-[var(--glow-success-lg)]",
+  warning: "shadow-[var(--glow-warning-sm)] hover:shadow-[var(--glow-warning-lg)]",
+  danger: "shadow-[var(--glow-danger-sm)] hover:shadow-[var(--glow-danger-lg)]",
 }
 
 const borderColors = {
-  primary: "border-[#00E5FF]/20 hover:border-[#00E5FF]/50",
-  accent: "border-[#7C4DFF]/20 hover:border-[#7C4DFF]/50",
-  success: "border-[#00FFA3]/20 hover:border-[#00FFA3]/50",
-  warning: "border-[#FFB300]/20 hover:border-[#FFB300]/50",
-  danger: "border-[#FF4D6A]/20 hover:border-[#FF4D6A]/50",
+  primary: "border-[var(--primary)]/20 hover:border-[var(--primary)]/50",
+  accent: "border-[var(--accent)]/20 hover:border-[var(--accent)]/50",
+  success: "border-[var(--success)]/20 hover:border-[var(--success)]/50",
+  warning: "border-[var(--warning)]/20 hover:border-[var(--warning)]/50",
+  danger: "border-[var(--danger)]/20 hover:border-[var(--danger)]/50",
 }
 
 export function GlowCard({

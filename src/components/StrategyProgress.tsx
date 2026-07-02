@@ -19,7 +19,7 @@ export function StrategyProgress({ completed, total, className, showLabel = true
           className={cn(
             "h-full rounded-full transition-all duration-500 ease-out",
             percentage === 100
-              ? "bg-gradient-to-r from-[var(--success)] to-[#00FFA3]"
+              ? "bg-gradient-to-r from-[var(--success)] to-[var(--success)]"
               : percentage > 50
               ? "bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
               : "bg-gradient-to-r from-[var(--warning)] to-[var(--primary)]"

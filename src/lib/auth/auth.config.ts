@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials"
 // Used by middleware.ts which runs in edge runtime
 export const authConfig = {
   trustHost: true,
+  basePath: "/api/auth",
   session: {
     strategy: "jwt" as const,
   },
