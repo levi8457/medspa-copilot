@@ -41,6 +41,8 @@ model Organization {
   usageRecords  UsageRecord[]
   leadSources    LeadSource[]
   leadAssignmentRules LeadAssignmentRule[]
+  projects    Project[]
+  scripts     ScriptLibrary[]
 
   @@index([slug])
   @@map("organizations")
@@ -128,6 +130,10 @@ model Customer {
   gender          String?
   source          String?  // 来源渠道
   status          String   @default("lead") // lead, contacted, negotiating, converted, churned
+  tier            String?  // A / B / C / D 客户分层
+  tierScore       Float?   // 0-100 综合得分
+  rfmScore        String?  // JSON: { recency, frequency, monetary, intent, potential }
+  healthScore     Float?   // 0-100 健康度
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -141,10 +147,14 @@ model Customer {
   followUpTasks   FollowUpTask[]
   timelineEvents  TimelineEvent[]
   consumptionRecords ConsumptionRecord[]
+  interactions    CustomerInteraction[]
+  recommendations ProjectRecommendation[]
+  schedules       Schedule[]
 
   @@index([orgId])
   @@index([consultantId])
   @@index([status])
+  @@index([tier])
   @@map("customers")
 }
 
@@ -517,4 +527,134 @@ model UsageRecord {
   @@index([type])
   @@index([date])
   @@map("usage_records")
+}
+
+// ==================== 项目库 ====================
+
+model Project {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  category        String   // 皮肤/整形/无创/口腔/抗衰...
+  priceMin        Float?
+  priceMax        Float?
+  description     String?
+  imageUrl        String?
+  tags            String?  // JSON: 标签数组
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  recommendations ProjectRecommendation[]
+
+  @@index([orgId])
+  @@index([category])
+  @@index([isActive])
+  @@map("projects")
+}
+
+model ProjectRecommendation {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  projectId       String
+  score           Float    // 推荐度评分 0-1
+  reason          String?  // 推荐理由
+  script          String?  // 推荐话术
+  conversionProb  Float?   // 预计转化概率
+  status          String   @default("pending") // pending / adopted / rejected / converted
+  adoptedAt       DateTime?
+  convertedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([projectId])
+  @@index([status])
+  @@map("project_recommendations")
+}
+
+// ==================== 话术库 ====================
+
+model ScriptLibrary {
+  id              String   @id @default(cuid())
+  orgId           String
+  creatorId       String?
+  title           String
+  content         String
+  category        String   // 开场白/异议处理/升单话术/回访话术/活动通知/项目介绍/邀约话术
+  tags            String?  // JSON: 标签数组
+  isOrgLevel      Boolean  @default(false)
+  useCount        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([category])
+  @@index([isOrgLevel])
+  @@map("script_library")
+}
+
+// ==================== 客户互动记录 ====================
+
+model CustomerInteraction {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  channel         String   // wechat / phone / in_store / recording / campaign
+  direction       String   // consultant_initiated / customer_initiated
+  duration        Int?
+  content         String?
+  summary         String?
+  hasReply        Boolean  @default(false)
+  replyTime       Int?
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([occurredAt])
+  @@index([channel])
+  @@map("customer_interactions")
+}
+
+// ==================== 日程管理 ====================
+
+model Schedule {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String?
+  consultantId    String
+  title           String
+  type            String   // in_store / phone_followup / wechat_followup / meeting / other
+  startTime       DateTime
+  endTime         DateTime?
+  reminderMinutes Int?
+  isAllDay        Boolean  @default(false)
+  isRecurring     Boolean  @default(false)
+  recurringRule   String?
+  status          String   @default("pending") // pending / completed / cancelled / no_show
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([customerId])
+  @@index([startTime])
+  @@index([status])
+  @@map("schedules")
 }

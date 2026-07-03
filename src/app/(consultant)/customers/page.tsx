@@ -31,7 +31,7 @@ const statusMap: Record<string, { label: string; color: string }> = {
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; search?: string; sortBy?: string; sortOrder?: string }>
+  searchParams: Promise<{ status?: string; search?: string; sortBy?: string; sortOrder?: string; tier?: string }>
 }) {
   const session = await auth()
   if (!session) {
@@ -43,6 +43,7 @@ export default async function CustomersPage({
   const searchQuery = params.search
   const sortBy = params.sortBy || "createdAt"
   const sortOrder = params.sortOrder || "desc"
+  const tierFilter = params.tier
 
   const where: Record<string, unknown> = {
     orgId: session.user.orgId,
@@ -54,6 +55,10 @@ export default async function CustomersPage({
 
   if (statusFilter) {
     where.status = statusFilter
+  }
+
+  if (tierFilter) {
+    where.tier = tierFilter
   }
 
   if (searchQuery) {
@@ -106,6 +111,28 @@ export default async function CustomersPage({
 
   const statusCounts = Object.fromEntries(stats.map((s) => [s.status, s._count]))
 
+  const tierStats = await prisma.customer.groupBy({
+    by: ["tier"],
+    where: {
+      orgId: session.user.orgId,
+      ...(session.user.role === "consultant" && { consultantId: session.user.id }),
+    },
+    _count: true,
+  })
+
+  const tierMap: Record<string, { label: string; color: string }> = {
+    A: { label: "A类 高价值", color: "var(--success)" },
+    B: { label: "B类 优质", color: "var(--primary)" },
+    C: { label: "C类 普通", color: "var(--warning)" },
+    D: { label: "D类 低优先", color: "var(--foreground-secondary)" },
+  }
+
+  const tierCounts = Object.fromEntries(
+    tierStats
+      .filter((t) => t.tier)
+      .map((t) => [t.tier!, t._count])
+  )
+
   return (
     <div className="p-8">
       <header className="flex items-center justify-between mb-8">
@@ -146,6 +173,40 @@ export default async function CustomersPage({
             }`}
           >
             {label} ({statusCounts[status] || 0})
+          </Link>
+        ))}
+      </div>
+
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+        <Link
+          href={`/customers?${new URLSearchParams({
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(searchQuery ? { search: searchQuery } : {}),
+          }).toString()}`}
+          className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+            !tierFilter
+              ? "bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/30"
+              : "bg-[var(--background)]/50 border border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--accent)]"
+          }`}
+        >
+          全部分层
+        </Link>
+        {Object.entries(tierMap).map(([tier, { label, color }]) => (
+          <Link
+            key={tier}
+            href={`/customers?${new URLSearchParams({
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(searchQuery ? { search: searchQuery } : {}),
+              tier,
+            }).toString()}`}
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              tierFilter === tier
+                ? "border"
+                : "bg-[var(--background)]/50 border border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--accent)]"
+            }`}
+            style={tierFilter === tier ? { backgroundColor: `${color}20`, color, borderColor: color } : {}}
+          >
+            {label} ({tierCounts[tier] || 0})
           </Link>
         ))}
       </div>
@@ -213,6 +274,7 @@ export default async function CustomersPage({
             const intentTag = customer.tags.find((t) => t.dimension === "需求意向")
             const intentValue =
               intentTag?.value === "高意向" ? 80 : intentTag?.value === "中等意向" ? 50 : 30
+            const tierInfo = customer.tier ? tierMap[customer.tier] : null
 
             return (
               <Link key={customer.id} href={`/customers/${customer.id}`}>
@@ -229,7 +291,7 @@ export default async function CustomersPage({
                         label=""
                       />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-medium text-lg">{customer.name}</span>
                           <span
                             className="px-2 py-0.5 rounded text-xs"
@@ -237,6 +299,14 @@ export default async function CustomersPage({
                           >
                             {statusInfo.label}
                           </span>
+                          {tierInfo && (
+                            <span
+                              className="px-2 py-0.5 rounded text-xs font-medium"
+                              style={{ backgroundColor: `${tierInfo.color}20`, color: tierInfo.color }}
+                            >
+                              {customer.tier}类
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-[var(--foreground-secondary)]">
                           {customer.phone && (

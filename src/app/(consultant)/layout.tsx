@@ -7,6 +7,10 @@ import {
   Users,
   FileAudio,
   ClipboardList,
+  MessageSquare,
+  Sparkles,
+  Calendar,
+  TrendingUp,
   LogOut,
 } from "lucide-react"
 
@@ -15,6 +19,10 @@ const navigation = [
   { name: "客户管理", href: "/customers", icon: Users },
   { name: "录音上传", href: "/recordings/upload", icon: FileAudio },
   { name: "跟进任务", href: "/tasks", icon: ClipboardList },
+  { name: "话术库", href: "/scripts", icon: MessageSquare },
+  { name: "智能推荐", href: "/recommendations", icon: Sparkles },
+  { name: "日程管理", href: "/schedules", icon: Calendar },
+  { name: "数据洞察", href: "/insights", icon: TrendingUp },
 ]
 
 export default function ConsultantLayout({
