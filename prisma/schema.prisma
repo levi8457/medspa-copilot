@@ -43,6 +43,9 @@ model Organization {
   leadAssignmentRules LeadAssignmentRule[]
   projects    Project[]
   scripts     ScriptLibrary[]
+  campaigns   MarketingCampaign[]
+  surveys     SatisfactionSurvey[]
+  approvals   ApprovalFlow[]
 
   @@index([slug])
   @@map("organizations")
@@ -657,4 +660,122 @@ model Schedule {
   @@index([startTime])
   @@index([status])
   @@map("schedules")
+}
+
+// ==================== 营销活动 ====================
+
+model MarketingCampaign {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  type            String   // coupon / experience / referral / festival
+  status          String   @default("draft") // draft / active / paused / ended
+  config          String?  // JSON: 活动规则配置
+  startDate       DateTime
+  endDate         DateTime
+  budget          Float?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  participants    CampaignParticipant[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([type])
+  @@map("marketing_campaigns")
+}
+
+model CampaignParticipant {
+  id              String   @id @default(cuid())
+  orgId           String
+  campaignId      String
+  customerId      String
+  consultantId    String?
+  status          String   @default("issued") // issued / used / expired / cancelled
+  issuedAt        DateTime @default(now())
+  usedAt          DateTime?
+  notes           String?
+
+  campaign        MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([campaignId])
+  @@index([customerId])
+  @@index([status])
+  @@map("campaign_participants")
+}
+
+// ==================== 满意度调研 ====================
+
+model SatisfactionSurvey {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  type            String   // post_visit / service_review / nps
+  rating          Int?     // 1-5 星
+  dimensions      String?  // JSON: { effect, service, environment, price }
+  feedback        String?
+  npsScore        Int?     // 0-10 NPS 评分
+  status          String   @default("pending") // pending / completed / alerted
+  triggeredAt     DateTime @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([type])
+  @@index([status])
+  @@index([rating])
+  @@map("satisfaction_surveys")
+}
+
+// ==================== 审批流 ====================
+
+model ApprovalFlow {
+  id              String   @id @default(cuid())
+  orgId           String
+  type            String   // discount / project_plan / customer_transfer / refund
+  title           String
+  applicantId     String
+  status          String   @default("pending") // pending / approved / rejected / cancelled
+  content         String?  // JSON: 申请内容
+  customerId      String?
+  amount          Float?
+  currentStep     Int      @default(0)
+  totalSteps      Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  steps           ApprovalStep[]
+
+  @@index([orgId])
+  @@index([applicantId])
+  @@index([status])
+  @@index([type])
+  @@map("approval_flows")
+}
+
+model ApprovalStep {
+  id              String   @id @default(cuid())
+  flowId          String
+  stepOrder       Int
+  approverId      String?
+  approverRole    String   // org_admin / super_admin
+  status          String   @default("pending") // pending / approved / rejected
+  comment         String?
+  approvedAt      DateTime?
+
+  flow            ApprovalFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@index([flowId])
+  @@index([approverId])
+  @@index([status])
+  @@map("approval_steps")
 }
