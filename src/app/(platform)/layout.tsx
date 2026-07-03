@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Building2, CreditCard, Receipt, BarChart3, Brain, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, Building2, CreditCard, Receipt, BarChart3, Brain, ShieldAlert, Settings, LogOut } from "lucide-react"
 
 const navigation = [
   { name: "平台总览", href: "/platform", icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navigation = [
   { name: "订单管理", href: "/platform/billing/orders", icon: Receipt },
   { name: "用量统计", href: "/platform/billing/usage", icon: BarChart3 },
   { name: "AI 配置", href: "/platform/ai-config", icon: Brain },
+  { name: "监控告警", href: "/platform/monitoring", icon: ShieldAlert },
   { name: "系统设置", href: "/platform/settings", icon: Settings },
 ]
 

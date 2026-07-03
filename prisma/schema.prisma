@@ -829,3 +829,141 @@ model CustomerProfileReport {
   @@index([consultantId])
   @@map("customer_profile_reports")
 }
+
+model AIConfig {
+  id              String   @id @default(cuid())
+  scope           String   // global / org
+  orgId           String?
+  key             String   // deepseek_api_key / asr_provider / compliance_threshold / daily_call_limit / ...
+  value           String
+  description     String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([scope, orgId])
+  @@index([key])
+  @@map("ai_configs")
+}
+
+model PromptVersion {
+  id              String   @id @default(cuid())
+  promptType      String   // tag_extraction / strategy / script / compliance / health / profile
+  version         String
+  content         String
+  changeLog       String?
+  status          String   @default("draft") // draft / active / archived
+  createdBy       String?
+  createdAt       DateTime @default(now())
+
+  @@index([promptType, status])
+  @@map("prompt_versions")
+}
+
+model ComplianceWord {
+  id              String   @id @default(cuid())
+  scope           String   // global / org
+  orgId           String?
+  category        String   // prohibited_promise / medical_term / absolute_language / false_publicity / custom
+  word            String
+  replacement     String?
+  severity        String   @default("medium") // low / medium / high
+  createdAt       DateTime @default(now())
+
+  @@index([scope, orgId])
+  @@index([category])
+  @@map("compliance_words")
+}
+
+model AICallLog {
+  id              String   @id @default(cuid())
+  orgId           String?
+  userId          String?
+  provider        String   // deepseek / aliyun_asr / tencent_asr
+  model           String?
+  callType        String   // chat / asr / reasoner
+  promptTokens    Int?
+  completionTokens Int?
+  totalTokens     Int?
+  durationMs      Int?
+  success         Boolean  @default(true)
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([provider])
+  @@index([createdAt])
+  @@map("ai_call_logs")
+}
+
+model AlertRule {
+  id              String   @id @default(cuid())
+  name            String
+  metric          String   // error_rate / queue_backlog / api_latency / db_connections / disk_usage
+  condition       String   // greater_than / less_than
+  threshold       Float
+  severity        String   // info / warning / critical
+  notifyChannel   String   // site / sms / email
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([metric])
+  @@index([isActive])
+  @@map("alert_rules")
+}
+
+model AlertEvent {
+  id              String   @id @default(cuid())
+  ruleId          String?
+  ruleName        String
+  metric          String
+  value           Float
+  threshold       Float
+  severity        String
+  status          String   @default("pending") // pending / acknowledged / resolved / ignored
+  acknowledgedBy  String?
+  resolvedBy      String?
+  resolvedNote    String?
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@map("alert_events")
+}
+
+model Ticket {
+  id              String   @id @default(cuid())
+  orgId           String
+  userId          String
+  subject         String
+  category        String   // billing / technical / feature_request / other
+  priority        String   @default("normal") // low / normal / high / urgent
+  status          String   @default("pending") // pending / processing / resolved / closed
+  description     String
+  assigneeId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  closedAt        DateTime?
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id              String   @id @default(cuid())
+  ticketId        String
+  senderId        String?
+  senderRole      String   // user / super_admin
+  content         String
+  createdAt       DateTime @default(now())
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
