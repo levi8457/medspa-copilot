@@ -153,11 +153,14 @@ model Customer {
   interactions    CustomerInteraction[]
   recommendations ProjectRecommendation[]
   schedules       Schedule[]
+  profileReports  CustomerProfileReport[]
+  healthScores    CustomerHealthScore[]
 
   @@index([orgId])
   @@index([consultantId])
   @@index([status])
   @@index([tier])
+  @@index([healthScore])
   @@map("customers")
 }
 
@@ -778,4 +781,51 @@ model ApprovalStep {
   @@index([approverId])
   @@index([status])
   @@map("approval_steps")
+}
+
+model CustomerHealthScore {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  score           Float   // 0-100 综合健康度
+  level           String   // healthy(80+) / good(60-80) / warning(40-60) / danger(<40)
+  dimensions      String   // JSON: { interactionFrequency, recency, satisfaction, consumption, repurchase, activity }
+  trend           String?  // up / stable / down
+  riskReasons     String?  // JSON: 风险下降原因数组
+  rescueStrategy  String?  // JSON: 挽回策略建议
+  evaluatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([evaluatedAt])
+  @@map("customer_health_scores")
+}
+
+model CustomerProfileReport {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  version         Int      @default(1)
+  overview        String?  // 基础画像速览
+  decisionStyle   String?  // 决策风格分析
+  communication   String?  // 沟通策略建议
+  coreNeeds       String?  // 核心需求与顾虑点
+  recommendations String?  // 推荐项目与时机
+  riskPoints      String?  // 风险点提示
+  nextActions     String?  // 下一步行动建议
+  fullContent     String   // 完整报告内容（Markdown）
+  status          String   @default("completed") // generating / completed / failed
+  generatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@map("customer_profile_reports")
 }

@@ -2,23 +2,14 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import prisma from "@/lib/db"
 import { GlowCard } from "@/components/futuristic/GlowCard"
-import { TagCapsule } from "@/components/futuristic/TagCapsule"
-import { EnergyRing } from "@/components/futuristic/EnergyRing"
+import { CustomerBatchList } from "@/components/CustomerBatchList"
 import {
   Search,
   Plus,
-  Phone,
-  MessageCircle,
   User,
-  ChevronRight,
   ArrowUpDown,
 } from "lucide-react"
 import Link from "next/link"
-
-function maskPhone(phone: string | null): string {
-  if (!phone || phone.length < 7) return phone || ""
-  return phone.slice(0, 3) + "****" + phone.slice(7)
-}
 
 const statusMap: Record<string, { label: string; color: string }> = {
   lead: { label: "线索", color: "var(--accent)" },
@@ -132,6 +123,17 @@ export default async function CustomersPage({
       .filter((t) => t.tier)
       .map((t) => [t.tier!, t._count])
   )
+
+  // 管理员可批量分配客户，预加载咨询师列表
+  let consultants: { id: string; name: string }[] = []
+  if (session.user.role === "org_admin" || session.user.role === "super_admin") {
+    const consultantUsers = await prisma.user.findMany({
+      where: { orgId: session.user.orgId, role: "consultant" },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    })
+    consultants = consultantUsers.map((u) => ({ id: u.id, name: u.name ?? "未命名咨询师" }))
+  }
 
   return (
     <div className="p-8">
@@ -269,79 +271,25 @@ export default async function CustomersPage({
             </Link>
           </GlowCard>
         ) : (
-          customers.map((customer) => {
-            const statusInfo = statusMap[customer.status] || statusMap.lead
-            const intentTag = customer.tags.find((t) => t.dimension === "需求意向")
-            const intentValue =
-              intentTag?.value === "高意向" ? 80 : intentTag?.value === "中等意向" ? 50 : 30
-            const tierInfo = customer.tier ? tierMap[customer.tier] : null
-
-            return (
-              <Link key={customer.id} href={`/customers/${customer.id}`}>
-                <GlowCard
-                  variant="primary"
-                  className="p-4 hover:scale-[1.01] transition-transform cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <EnergyRing
-                        value={intentValue}
-                        variant={intentValue > 60 ? "success" : intentValue > 30 ? "warning" : "accent"}
-                        size={60}
-                        label=""
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-medium text-lg">{customer.name}</span>
-                          <span
-                            className="px-2 py-0.5 rounded text-xs"
-                            style={{ backgroundColor: `${statusInfo.color}20`, color: statusInfo.color }}
-                          >
-                            {statusInfo.label}
-                          </span>
-                          {tierInfo && (
-                            <span
-                              className="px-2 py-0.5 rounded text-xs font-medium"
-                              style={{ backgroundColor: `${tierInfo.color}20`, color: tierInfo.color }}
-                            >
-                              {customer.tier}类
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-[var(--foreground-secondary)]">
-                          {customer.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {maskPhone(customer.phone)}
-                            </span>
-                          )}
-                          {customer.wechat && (
-                            <span className="flex items-center gap-1">
-                              <MessageCircle className="w-3 h-3" />
-                              {customer.wechat}
-                            </span>
-                          )}
-                          <span>{customer._count.audioRecords} 条录音</span>
-                        </div>
-                        {customer.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {customer.tags.map((tag, idx) => (
-                              <TagCapsule
-                                key={idx}
-                                label={tag.value}
-                                variant={tag.dimension === "需求意向" ? "success" : "primary"}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--foreground-secondary)]" />
-                  </div>
-                </GlowCard>
-              </Link>
-            )
-          })
+          <CustomerBatchList
+            customers={customers.map((c) => ({
+              id: c.id,
+              name: c.name,
+              phone: c.phone,
+              wechat: c.wechat,
+              status: c.status,
+              tier: c.tier,
+              tags: c.tags.map((t) => ({ dimension: t.dimension, value: t.value })),
+              _count: {
+                audioRecords: c._count.audioRecords,
+                followUpPlans: c._count.followUpPlans,
+              },
+            }))}
+            tierMap={tierMap}
+            statusMap={statusMap}
+            userRole={session.user.role}
+            consultants={consultants}
+          />
         )}
       </div>
     </div>

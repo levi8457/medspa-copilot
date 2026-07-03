@@ -17,6 +17,9 @@ import {
   Edit,
   ArrowLeft,
   Plus,
+  Sparkles,
+  Activity,
+  MessageSquare,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -102,7 +105,7 @@ export default async function CustomerDetailPage({
 
   return (
     <div className="p-8">
-      <header className="flex items-center justify-between mb-8">
+      <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Link
             href="/customers"
@@ -115,13 +118,36 @@ export default async function CustomerDetailPage({
             客户详情
           </h1>
         </div>
-        <Link
-          href={`/customers/${id}/edit`}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/30 transition-colors"
-        >
-          <Edit className="w-4 h-4" />
-          编辑
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href={`/customers/${id}/profile-report`}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25 transition-colors text-sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            画像报告
+          </Link>
+          <Link
+            href={`/customers/${id}/health`}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25 transition-colors text-sm"
+          >
+            <Activity className="w-4 h-4" />
+            健康度
+          </Link>
+          <Link
+            href={`/customers/${id}/interactions`}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--primary)]/15 text-[var(--primary)] hover:bg-[var(--primary)]/25 transition-colors text-sm"
+          >
+            <MessageSquare className="w-4 h-4" />
+            互动记录
+          </Link>
+          <Link
+            href={`/customers/${id}/edit`}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/30 transition-colors text-sm"
+          >
+            <Edit className="w-4 h-4" />
+            编辑
+          </Link>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

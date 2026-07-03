@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
+// 审批类型映射
 const VALID_TYPES = ["discount", "project_plan", "customer_transfer", "refund"]
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
 
     const isApprover = role === "org_admin" || role === "super_admin"
 
+    // 构造各 tab 查询条件
     const buildWhere = (t: string) => {
       const base: Record<string, unknown> = { orgId }
       if (t === "applied") {
@@ -30,10 +32,12 @@ export async function GET(request: NextRequest) {
       } else if (t === "completed") {
         base.status = { in: ["approved", "rejected", "cancelled"] }
       } else {
+        // pending: 待我审批 —— 仅 org_admin/super_admin 可见，且不是自己发起的
         base.status = "pending"
         if (isApprover) {
           base.applicantId = { not: userId }
         } else {
+          // 普通咨询师无审批权限，返回空
           base.applicantId = "__none__"
         }
       }
@@ -64,6 +68,7 @@ export async function GET(request: NextRequest) {
       prisma.approvalFlow.count({ where: completedWhere }),
     ])
 
+    // 批量查询申请人姓名
     const applicantIds = [...new Set(items.map((i) => i.applicantId))]
     const applicants = await prisma.user.findMany({
       where: { id: { in: applicantIds } },
@@ -71,6 +76,7 @@ export async function GET(request: NextRequest) {
     })
     const applicantMap = Object.fromEntries(applicants.map((a) => [a.id, a.name || "未知"]))
 
+    // 批量查询审批人姓名（步骤中 approverId）
     const approverIds = [
       ...new Set(
         items.flatMap((i) =>
@@ -151,6 +157,7 @@ export async function POST(request: NextRequest) {
       amount?: number | null
     }
 
+    // 字段校验
     if (!type || !VALID_TYPES.includes(type)) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "审批类型无效" } },
@@ -164,6 +171,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // content 序列化为 JSON 字符串存储（schema 中 content 为 String?）
     const contentStr =
       content === undefined || content === null
         ? null
@@ -171,6 +179,7 @@ export async function POST(request: NextRequest) {
           ? content
           : JSON.stringify(content)
 
+    // 默认单步审批，由机构管理员审批
     const flow = await prisma.approvalFlow.create({
       data: {
         orgId: session.user.orgId,

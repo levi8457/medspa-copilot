@@ -48,10 +48,17 @@ export async function GET(request: NextRequest) {
     const ratedSurveys = surveys.filter((s) => s.rating != null)
     const avgRating =
       ratedSurveys.length > 0
-        ? Math.round((ratedSurveys.reduce((sum, s) => sum + (s.rating || 0), 0) / ratedSurveys.length) * 10) / 10
+        ? Math.round(
+            (ratedSurveys.reduce((sum, s) => sum + (s.rating || 0), 0) /
+              ratedSurveys.length) *
+              10
+          ) / 10
         : 0
-    const badCount = surveys.filter((s) => s.rating != null && s.rating <= 3).length
-    const completionRate = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0
+    const badCount = surveys.filter(
+      (s) => s.rating != null && s.rating <= 3
+    ).length
+    const completionRate =
+      total > 0 ? Math.round((completed / total) * 1000) / 10 : 0
 
     const distribution = [1, 2, 3, 4, 5].map((star) => ({
       star,
@@ -76,7 +83,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        stats: { total, completed, avgRating, badCount, completionRate },
+        stats: {
+          total,
+          completed,
+          avgRating,
+          badCount,
+          completionRate,
+        },
         distribution,
         list,
       },
@@ -84,7 +97,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("获取满意度调研数据失败:", error)
     return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "获取满意度调研数据失败" } },
+      {
+        success: false,
+        error: { code: "INTERNAL_ERROR", message: "获取满意度调研数据失败" },
+      },
       { status: 500 }
     )
   }
@@ -102,7 +118,15 @@ export async function POST(request: NextRequest) {
 
     const orgId = session.user.orgId
     const body = await request.json()
-    const { customerId, consultantId, type, rating, dimensions, feedback, npsScore } = body as {
+    const {
+      customerId,
+      consultantId,
+      type,
+      rating,
+      dimensions,
+      feedback,
+      npsScore,
+    } = body as {
       customerId?: string
       consultantId?: string | null
       type?: string
@@ -114,14 +138,20 @@ export async function POST(request: NextRequest) {
 
     if (!customerId || !type) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "客户ID和调研类型为必填项" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "客户ID和调研类型为必填项" },
+        },
         { status: 400 }
       )
     }
 
     if (!VALID_TYPES.includes(type as SurveyType)) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "调研类型无效" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "调研类型无效" },
+        },
         { status: 400 }
       )
     }
@@ -132,7 +162,10 @@ export async function POST(request: NextRequest) {
     })
     if (!customer) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "客户不存在或无权操作" } },
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: "客户不存在或无权操作" },
+        },
         { status: 404 }
       )
     }
@@ -155,7 +188,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("创建满意度调研失败:", error)
     return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "创建满意度调研失败" } },
+      {
+        success: false,
+        error: { code: "INTERNAL_ERROR", message: "创建满意度调研失败" },
+      },
       { status: 500 }
     )
   }
