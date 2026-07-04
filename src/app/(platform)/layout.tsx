@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { LayoutDashboard, Building2, CreditCard, Receipt, BarChart3, Brain, ShieldAlert, Settings, LogOut } from "lucide-react"
 
 const navigation = [
@@ -56,13 +57,16 @@ export default function PlatformLayout({
         </nav>
 
         <div className="p-4 border-t border-[var(--border)]">
-          <Link
-            href="/api/auth/signout"
+          <button
+            onClick={async () => {
+              await signOut({ redirect: false })
+              window.location.href = "/medspa/login"
+            }}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--foreground-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] w-full transition-colors"
           >
             <LogOut className="w-5 h-5" />
             退出登录
-          </Link>
+          </button>
         </div>
       </aside>
 

@@ -16,6 +16,7 @@ import {
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface OverviewData {
   totalCustomers: number
@@ -52,7 +53,7 @@ export default function InsightsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/consultant/insights")
+        const res = await apiFetch("/api/consultant/insights")
         const result = await res.json()
         if (result.success) {
           setOverview(result.data.overview)
@@ -105,7 +106,7 @@ export default function InsightsPage() {
           value={`¥${((overview?.totalRevenue || 0) / 10000).toFixed(1)}万`}
           icon={<DollarSign className="w-5 h-5" />}
           trend="up"
-          trendValue="客单价 ¥{overview?.avgOrderValue}"
+          trendValue={`客单价 ¥${overview?.avgOrderValue ?? 0}`}
           variant="accent"
         />
         <HudPanel

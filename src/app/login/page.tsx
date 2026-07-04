@@ -2,6 +2,7 @@
 
 import { useState, Suspense, useMemo } from "react"
 import { signIn } from "next-auth/react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { motion } from "framer-motion"
@@ -10,7 +11,7 @@ import { Phone, Lock, Loader2, AlertCircle } from "lucide-react"
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+  const callbackUrl = searchParams.get("callbackUrl")
 
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
@@ -41,8 +42,11 @@ function LoginForm() {
       if (result?.error) {
         setError("手机号或密码错误")
       } else {
-        router.push(callbackUrl)
-        router.refresh()
+        if (callbackUrl) {
+          router.push(callbackUrl)
+        } else {
+          router.refresh()
+        }
       }
     } catch {
       setError("登录失败，请稍后重试")
@@ -156,9 +160,19 @@ function LoginForm() {
 
           {/* 底部提示 */}
           <div className="mt-6 text-center text-sm text-[var(--foreground-secondary)]">
-            <p className="mb-1">测试账号：</p>
-            <p>咨询师：13800000001 / 123456</p>
-            <p>管理员：13800000002 / 123456</p>
+            <p className="mb-2">
+              还没有账号？
+              <Link
+                href="/trial"
+                className="text-[var(--primary)] hover:text-[var(--primary)]/80 font-medium transition-colors"
+              >
+                立即免费试用
+              </Link>
+            </p>
+            <p className="mb-1 text-xs opacity-70">测试账号：</p>
+            <p className="text-xs opacity-70">咨询师：13800000001 / 123456</p>
+            <p className="text-xs opacity-70">管理员：13800000002 / 123456</p>
+            <p className="text-xs opacity-70">超级管理员：13800000000 / 123456</p>
           </div>
         </GlowCard>
       </motion.div>

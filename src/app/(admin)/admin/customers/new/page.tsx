@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-fetch"
 
 const statusOptions = [
   { value: "lead", label: "线索" },
@@ -32,28 +33,33 @@ export default function AdminCustomerNewPage() {
     e.preventDefault()
     setSaving(true)
 
-    const res = await fetch("/api/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        phone: form.phone || null,
-        wechat: form.wechat || null,
-        age: form.age ? parseInt(form.age) : null,
-        gender: form.gender || null,
-        source: form.source || null,
-        status: form.status,
-        notes: form.notes || null,
-      }),
-    })
+    try {
+      const res = await apiFetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone || null,
+          wechat: form.wechat || null,
+          age: form.age ? parseInt(form.age) : null,
+          gender: form.gender || null,
+          source: form.source || null,
+          status: form.status,
+          notes: form.notes || null,
+        }),
+      })
 
-    if (res.ok) {
       const data = await res.json()
-      router.push(`/admin/customers/${data.data.id}`)
-    } else {
-      alert("创建失败")
+      if (res.ok && data.success && data.data) {
+        router.push(`/admin/customers/${data.data.id}`)
+      } else {
+        alert(data.error?.message || "创建失败")
+      }
+    } catch {
+      alert("网络错误，请稍后重试")
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   return (

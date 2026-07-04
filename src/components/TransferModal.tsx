@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, ArrowRightLeft, Loader2 } from "lucide-react"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface Consultant {
   id: string
@@ -16,10 +17,9 @@ interface TransferModalProps {
   currentConsultantId?: string | null
   isOpen: boolean
   onClose: () => void
-  onTransfer: () => void
 }
 
-export function TransferModal({ customerId, customerName, currentConsultantId, isOpen, onClose, onTransfer }: TransferModalProps) {
+export function TransferModal({ customerId, customerName, currentConsultantId, isOpen, onClose }: TransferModalProps) {
   const [consultants, setConsultants] = useState<Consultant[]>([])
   const [selectedId, setSelectedId] = useState("")
   const [loading, setLoading] = useState(false)
@@ -28,7 +28,7 @@ export function TransferModal({ customerId, customerName, currentConsultantId, i
   useEffect(() => {
     if (!isOpen) return
     setFetching(true)
-    fetch("/api/admin/team")
+    apiFetch("/api/admin/team")
       .then((r) => r.json())
       .then((res) => {
         if (res.success) {
@@ -43,14 +43,14 @@ export function TransferModal({ customerId, customerName, currentConsultantId, i
     if (!selectedId) return
     setLoading(true)
     try {
-      const res = await fetch("/api/customers/transfer", {
+      const res = await apiFetch("/api/customers/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerId, targetConsultantId: selectedId }),
       })
       if (res.ok) {
-        onTransfer()
         onClose()
+        window.location.reload()
       }
     } catch (e) {
       console.error("Transfer failed:", e)

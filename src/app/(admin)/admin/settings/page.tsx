@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Save, Tag, FileText, Shield, Bell, MessageSquare } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface TagSchema {
   id: string
@@ -52,7 +53,7 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const res = await fetch("/api/settings/tags")
+        const res = await apiFetch("/api/settings/tags")
         const json = await res.json()
         if (json.success && json.data) {
           if (json.data.schemas?.length > 0) {
@@ -111,7 +112,7 @@ export default function AdminSettingsPage() {
 
   const handleSave = async () => {
     try {
-      await fetch("/api/settings/tags", {
+      await apiFetch("/api/settings/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

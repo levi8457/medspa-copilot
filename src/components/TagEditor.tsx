@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
 import { Pencil, Plus, Trash2, X, Check, FileAudio, Quote } from "lucide-react"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface Tag {
   id: string
@@ -38,7 +39,7 @@ export function TagEditor({ customerId, tags, onTagsChange, onViewTranscript }: 
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/customers/${customerId}/tags`, {
+      const res = await apiFetch(`/api/customers/${customerId}/tags`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tagId: tag.id, dimension: tag.dimension, value: editValue, action: "update" }),
@@ -59,7 +60,7 @@ export function TagEditor({ customerId, tags, onTagsChange, onViewTranscript }: 
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/customers/${customerId}/tags`, {
+      const res = await apiFetch(`/api/customers/${customerId}/tags`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tagId: tag.id, dimension: tag.dimension, value: tag.value, action: "delete" }),
@@ -79,7 +80,7 @@ export function TagEditor({ customerId, tags, onTagsChange, onViewTranscript }: 
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/customers/${customerId}/tags`, {
+      const res = await apiFetch(`/api/customers/${customerId}/tags`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dimension: newDimension, value: newValue, action: "create" }),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-fetch"
 
 const intentOptions = [
   { value: "高意向", label: "高意向" },
@@ -40,7 +41,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
 
     const fetchCustomer = async () => {
       try {
-        const response = await fetch(`/api/customers/${customerId}`)
+        const response = await apiFetch(`/api/customers/${customerId}`)
         const result = await response.json()
 
         if (result.success) {
@@ -76,7 +77,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api/customers/${customerId}`, {
+      const response = await apiFetch(`/api/customers/${customerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

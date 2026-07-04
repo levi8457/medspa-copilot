@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Plus, Copy, Check, Filter, X, BookOpen, Tag } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface ScriptItem {
   id: string
@@ -49,7 +50,7 @@ export default function ScriptsLibraryPage() {
       if (activeCategory) params.set("category", activeCategory)
       if (scope !== "all") params.set("scope", scope)
 
-      const res = await fetch(`/api/scripts/library?${params.toString()}`)
+      const res = await apiFetch(`/api/scripts/library?${params.toString()}`)
       const result = await res.json()
       if (result.success) {
         setScripts(result.data.scripts)
@@ -74,7 +75,7 @@ export default function ScriptsLibraryPage() {
 
   const handleCreate = async () => {
     try {
-      const res = await fetch("/api/scripts/library", {
+      const res = await apiFetch("/api/scripts/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

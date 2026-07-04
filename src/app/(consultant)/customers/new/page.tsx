@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-fetch"
 
 export default function NewCustomerPage() {
   const router = useRouter()
@@ -27,7 +28,7 @@ export default function NewCustomerPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/customers", {
+      const response = await apiFetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

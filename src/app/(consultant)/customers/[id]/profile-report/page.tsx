@@ -18,6 +18,7 @@ import {
 import Link from "next/link"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 // ============ 类型定义 ============
 
@@ -109,8 +110,8 @@ export default function ProfileReportPage() {
     setLoading(true)
     try {
       const [customerRes, reportRes] = await Promise.all([
-        fetch(`/api/customers/${customerId}`),
-        fetch(`/api/customers/${customerId}/profile-report`),
+        apiFetch(`/api/customers/${customerId}`),
+        apiFetch(`/api/customers/${customerId}/profile-report`),
       ])
       const customerResult = await customerRes.json()
       const reportResult = await reportRes.json()
@@ -140,7 +141,7 @@ export default function ProfileReportPage() {
     setStreamError(null)
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/customers/${customerId}/profile-report/stream`,
         {
           method: "POST",

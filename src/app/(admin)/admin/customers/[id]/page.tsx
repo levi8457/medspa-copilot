@@ -88,7 +88,6 @@ export default async function AdminCustomerDetailPage({
               customerId={customer.id}
               customerName={customer.name}
               currentConsultantId={customer.consultantId}
-              onTransfer={() => window.location.reload()}
             />
             <Link
               href={`/admin/customers/${id}/edit`}

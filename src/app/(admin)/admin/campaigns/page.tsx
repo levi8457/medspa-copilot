@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
+import { apiFetch } from "@/lib/api-fetch"
 
 const typeMap: Record<string, { label: string; icon: string; color: string }> = {
   coupon: { label: "优惠券", icon: "🎫", color: "var(--primary)" },
@@ -86,7 +87,7 @@ export default function CampaignsPage() {
       if (typeFilter) params.set("type", typeFilter)
       if (statusFilter) params.set("status", statusFilter)
 
-      const res = await fetch(`/api/admin/campaigns?${params}`)
+      const res = await apiFetch(`/api/admin/campaigns?${params}`)
       const result = await res.json()
       if (result.success) {
         setCampaigns(result.data.campaigns)
@@ -121,7 +122,7 @@ export default function CampaignsPage() {
         }
       }
 
-      const res = await fetch("/api/admin/campaigns", {
+      const res = await apiFetch("/api/admin/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -152,7 +153,7 @@ export default function CampaignsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("确认删除此营销活动？")) return
     try {
-      const res = await fetch(`/api/admin/campaigns/${id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/admin/campaigns/${id}`, { method: "DELETE" })
       const result = await res.json()
       if (result.success) {
         fetchCampaigns()

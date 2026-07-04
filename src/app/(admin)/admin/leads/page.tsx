@@ -6,6 +6,7 @@ import { Search, Plus, Phone, MessageCircle, User, ChevronRight, GripVertical, A
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 const statusMap: Record<string, { label: string; color: string }> = {
   lead: { label: "线索", color: "var(--accent)" },
@@ -73,7 +74,7 @@ export default function LeadsManagementPage() {
       if (searchQuery) params.set("search", searchQuery)
       if (statusFilter) params.set("status", statusFilter)
       
-      const res = await fetch(`/api/admin/leads?${params}`)
+      const res = await apiFetch(`/api/admin/leads?${params}`)
       const result = await res.json()
       if (result.success) {
         setLeads(result.data.leads)
@@ -88,7 +89,7 @@ export default function LeadsManagementPage() {
 
   const fetchSources = async () => {
     try {
-      const res = await fetch("/api/admin/lead-sources")
+      const res = await apiFetch("/api/admin/lead-sources")
       const result = await res.json()
       if (result.success) {
         setSources(result.data)
@@ -100,7 +101,7 @@ export default function LeadsManagementPage() {
 
   const fetchRules = async () => {
     try {
-      const res = await fetch("/api/admin/assignment-rules")
+      const res = await apiFetch("/api/admin/assignment-rules")
       const result = await res.json()
       if (result.success) {
         setRules(result.data)
@@ -119,7 +120,7 @@ export default function LeadsManagementPage() {
   useEffect(() => {
     const fetchConsultants = async () => {
       try {
-        const res = await fetch("/api/team")
+        const res = await apiFetch("/api/team")
         const result = await res.json()
         if (result.success) {
           setConsultants(result.data.members.map((m: any) => ({ id: m.id, name: m.name })))
@@ -147,7 +148,7 @@ export default function LeadsManagementPage() {
     if (!assignConsultantId || selectedLeads.length === 0) return
     
     try {
-      const res = await fetch("/api/admin/leads/assign", {
+      const res = await apiFetch("/api/admin/leads/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds: selectedLeads, consultantId: assignConsultantId }),
@@ -172,7 +173,7 @@ export default function LeadsManagementPage() {
     formData.append("file", bulkFile)
 
     try {
-      const res = await fetch("/api/admin/leads/bulk", {
+      const res = await apiFetch("/api/admin/leads/bulk", {
         method: "POST",
         body: formData,
       })
@@ -189,7 +190,7 @@ export default function LeadsManagementPage() {
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      const res = await fetch(`/api/customers/${leadId}`, {
+      const res = await apiFetch(`/api/customers/${leadId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),

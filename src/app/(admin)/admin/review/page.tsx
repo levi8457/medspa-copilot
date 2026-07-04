@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle, XCircle, Filter, Eye } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface ReviewItem {
   id: string
@@ -25,7 +26,7 @@ export default function ReviewCenterPage() {
 
   const fetchReviewItems = async () => {
     try {
-      const res = await fetch("/api/admin/review")
+      const res = await apiFetch("/api/admin/review")
       const result = await res.json()
       if (result.success) {
         setItems(result.data)
@@ -47,7 +48,7 @@ export default function ReviewCenterPage() {
     type: "sop" | "tag" | "strategy"
   ) => {
     try {
-      await fetch(`/api/review/${id}`, {
+      await apiFetch(`/api/review/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A0E1A"/>
+      <stop offset="1" stop-color="#101728"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00E5FF"/>
+      <stop offset="1" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bgGrad)"/>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="13.25" fill="none" stroke="#00E5FF" stroke-opacity="0.35" stroke-width="1.5"/>
+  <!-- 医疗十字 + M 融合 -->
+  <g filter="url(#glow)">
+    <!-- 竖向十字 -->
+    <rect x="29.5" y="14" width="5" height="36" rx="2.5" fill="url(#cyanGrad)"/>
+    <!-- 横向十字 -->
+    <rect x="14" y="29.5" width="36" height="5" rx="2.5" fill="url(#cyanGrad)"/>
+  </g>
+  <!-- 中心发光点 -->
+  <circle cx="32" cy="32" r="2.5" fill="#0A0E1A"/>
+  <circle cx="32" cy="32" r="1.2" fill="#00E5FF"/>
+</svg>

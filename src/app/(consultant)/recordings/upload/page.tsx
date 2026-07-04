@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Upload, FileAudio, CheckCircle, AlertCircle, Loader2, X } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface Customer {
   id: string
@@ -32,7 +33,7 @@ export default function RecordingUploadPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch("/api/customers?pageSize=100")
+      const response = await apiFetch("/api/customers?pageSize=100")
       const result = await response.json()
       if (result.success) {
         setCustomers(result.data.customers)
@@ -79,7 +80,7 @@ export default function RecordingUploadPage() {
       formData.append("file", selectedFile)
       formData.append("customerId", selectedCustomer)
 
-      const response = await fetch("/api/recordings", {
+      const response = await apiFetch("/api/recordings", {
         method: "POST",
         body: formData,
       })
@@ -93,8 +94,8 @@ export default function RecordingUploadPage() {
       const recordingId = result.data.id
       setUploadProgress({ status: "processing", progress: 30 })
 
-      // 订阅 SSE 获取实时进度
-      const eventSource = new EventSource(`/api/recordings/${recordingId}/progress`)
+      // 订阅 SSE 获取实时进度（ basePath 需手动拼接）
+      const eventSource = new EventSource(`/medspa/api/recordings/${recordingId}/progress`)
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data)

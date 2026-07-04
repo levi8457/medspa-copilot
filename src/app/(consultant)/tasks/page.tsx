@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Clock, CheckCircle, AlertCircle, Filter, Copy, MessageSquare, Loader2, Sparkles, Check } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface Task {
   id: string
@@ -40,7 +41,7 @@ export default function TasksPage() {
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch("/api/dashboard/daily")
+      const response = await apiFetch("/api/dashboard/daily")
       const result = await response.json()
       if (result.success) {
         setTasks(result.data.tasks)
@@ -64,7 +65,7 @@ export default function TasksPage() {
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     try {
-      await fetch(`/api/tasks/${taskId}/status`, {
+      await apiFetch(`/api/tasks/${taskId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -80,7 +81,7 @@ export default function TasksPage() {
     setStreamingText((prev) => ({ ...prev, [task.id]: "" }))
 
     try {
-      const response = await fetch("/api/scripts/generate-stream", {
+      const response = await apiFetch("/api/scripts/generate-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId: task.id, customerId: task.customerId }),

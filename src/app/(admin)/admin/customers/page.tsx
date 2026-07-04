@@ -11,6 +11,7 @@ import {
   MessageCircle,
   User,
   ChevronRight,
+  Download,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -74,13 +75,22 @@ export default async function AdminCustomersPage({
             <h1 className="text-2xl font-bold text-[var(--foreground)]">客户管理</h1>
             <p className="text-[var(--foreground-secondary)] mt-1">管理机构全部客户档案</p>
           </div>
-          <Link
-            href="/admin/customers/new"
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--background)] rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-4 h-4" />
-            新建客户
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/api/export/customers${statusFilter ? `?status=${statusFilter}` : ""}`}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--background)]/50 border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              导出
+            </Link>
+            <Link
+              href="/admin/customers/new"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--background)] rounded-lg font-medium hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              新建客户
+            </Link>
+          </div>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2">

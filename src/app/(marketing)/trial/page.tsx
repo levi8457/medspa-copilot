@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   KeyRound,
 } from "lucide-react"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface FormState {
   orgName: string
@@ -148,7 +149,7 @@ export default function TrialRegisterPage() {
 
     setIsSubmitting(true)
     try {
-      const res = await fetch("/api/trial/register", {
+      const res = await apiFetch("/api/trial/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

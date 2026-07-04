@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Star, AlertTriangle, Filter, CheckCircle, Clock, MessageSquare } from "lucide-react"
+import { Star, AlertTriangle, Filter, CheckCircle, Clock, MessageSquare, Download } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 const TYPE_MAP: Record<string, { label: string; variant: "primary" | "accent" | "success" }> = {
   post_visit: { label: "术后回访", variant: "primary" },
@@ -85,7 +86,7 @@ export default function SatisfactionPage() {
       const params = new URLSearchParams()
       if (typeFilter !== "all") params.set("type", typeFilter)
       if (ratingFilter !== "all") params.set("rating", ratingFilter)
-      const res = await fetch(`/api/admin/satisfaction?${params.toString()}`)
+      const res = await apiFetch(`/api/admin/satisfaction?${params.toString()}`)
       const result = await res.json()
       if (result.success) {
         setData(result.data)
@@ -129,14 +130,31 @@ export default function SatisfactionPage() {
     return "var(--success)"
   }
 
+  const handleExport = () => {
+    const params = new URLSearchParams()
+    if (typeFilter !== "all") params.set("type", typeFilter)
+    if (ratingFilter === "good") params.set("minRating", "4")
+    if (ratingFilter === "bad") params.set("maxRating", "3")
+    window.location.href = `/api/export/satisfaction?${params.toString()}`
+  }
+
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">满意度调研管理</h1>
-          <p className="text-[var(--foreground-secondary)] mt-1">
-            监控客户满意度，及时预警差评风险
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">满意度调研管理</h1>
+            <p className="text-[var(--foreground-secondary)] mt-1">
+              监控客户满意度，及时预警差评风险
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--background)]/50 border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            导出
+          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-4">

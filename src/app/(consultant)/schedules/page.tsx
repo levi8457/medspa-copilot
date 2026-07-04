@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Plus, Clock, MapPin, Phone, MessageCircle, Users, ChevronLeft, ChevronRight, X, Check, MoreHorizontal } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface ScheduleItem {
   id: string
@@ -20,7 +21,7 @@ interface ScheduleItem {
   } | null
 }
 
-const typeMap: Record<string, { label: string; icon: any; color: string }> = {
+const typeMap: Record<string, { label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; color: string }> = {
   in_store: { label: "到店预约", icon: MapPin, color: "var(--success)" },
   phone_followup: { label: "电话跟进", icon: Phone, color: "var(--primary)" },
   wechat_followup: { label: "微信跟进", icon: MessageCircle, color: "var(--accent)" },
@@ -49,7 +50,7 @@ export default function SchedulesPage() {
     setLoading(true)
     try {
       const dateStr = selectedDate.toISOString().split("T")[0]
-      const res = await fetch(`/api/schedules?date=${dateStr}`)
+      const res = await apiFetch(`/api/schedules?date=${dateStr}`)
       const result = await res.json()
       if (result.success) {
         setSchedules(result.data)
@@ -67,7 +68,7 @@ export default function SchedulesPage() {
 
   const handleCreate = async () => {
     try {
-      const res = await fetch("/api/schedules", {
+      const res = await apiFetch("/api/schedules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -93,7 +94,7 @@ export default function SchedulesPage() {
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch(`/api/schedules/${id}`, {
+      const res = await apiFetch(`/api/schedules/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

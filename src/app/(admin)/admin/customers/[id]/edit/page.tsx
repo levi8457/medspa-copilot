@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-fetch"
 
 const statusOptions = [
   { value: "lead", label: "线索" },
@@ -39,8 +40,10 @@ export default function AdminCustomerEditPage() {
     intentLevel: "中等意向",
   })
 
+  const [loadError, setLoadError] = useState("")
+
   useEffect(() => {
-    fetch(`/api/customers/${customerId}`)
+    apiFetch(`/api/customers/${customerId}`)
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -57,43 +60,54 @@ export default function AdminCustomerEditPage() {
             notes: c.notes || "",
             intentLevel: intentTag?.value || "中等意向",
           })
+        } else {
+          setLoadError(res.error?.message || "加载客户信息失败")
         }
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setLoadError("网络错误，加载客户信息失败")
+        setLoading(false)
+      })
   }, [customerId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
 
-    const payload = {
-      name: form.name,
-      phone: form.phone || null,
-      wechat: form.wechat || null,
-      age: form.age ? parseInt(form.age) : null,
-      gender: form.gender || null,
-      source: form.source || null,
-      status: form.status,
-      notes: form.notes || null,
-      tags: [
-        { dimension: "需求意向", value: form.intentLevel },
-      ],
-    }
+    try {
+      const payload = {
+        name: form.name,
+        phone: form.phone || null,
+        wechat: form.wechat || null,
+        age: form.age ? parseInt(form.age) : null,
+        gender: form.gender || null,
+        source: form.source || null,
+        status: form.status,
+        notes: form.notes || null,
+        tags: [
+          { dimension: "需求意向", value: form.intentLevel },
+        ],
+      }
 
-    const res = await fetch(`/api/customers/${customerId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+      const res = await apiFetch(`/api/customers/${customerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
-    if (res.ok) {
-      router.push(`/admin/customers/${customerId}`)
-      router.refresh()
-    } else {
-      alert("保存失败")
+      const data = await res.json()
+      if (res.ok && data.success) {
+        router.push(`/admin/customers/${customerId}`)
+        router.refresh()
+      } else {
+        alert(data.error?.message || "保存失败")
+      }
+    } catch {
+      alert("网络错误，请稍后重试")
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (loading) {

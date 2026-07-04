@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
+import { apiFetch } from "@/lib/api-fetch"
 
 type ApprovalType = "discount" | "project_plan" | "customer_transfer" | "refund"
 type ApprovalStatus = "pending" | "approved" | "rejected" | "cancelled"
@@ -117,7 +118,7 @@ export default function ApprovalsPage() {
   const fetchList = useCallback(async (tab: TabKey) => {
     try {
       setLoading(true)
-      const res = await fetch(`/api/admin/approvals?tab=${tab}`)
+      const res = await apiFetch(`/api/admin/approvals?tab=${tab}`)
       const result = await res.json()
       if (result.success) {
         setItems(result.data.items)
@@ -137,7 +138,7 @@ export default function ApprovalsPage() {
   const fetchDetail = async (id: string) => {
     try {
       setDetailLoading(true)
-      const res = await fetch(`/api/admin/approvals/${id}`)
+      const res = await apiFetch(`/api/admin/approvals/${id}`)
       const result = await res.json()
       if (result.success) {
         setDetailMap((prev) => ({ ...prev, [id]: result.data }))
@@ -163,7 +164,7 @@ export default function ApprovalsPage() {
   const handleApprove = async (id: string) => {
     try {
       setActionLoading(true)
-      const res = await fetch(`/api/admin/approvals/${id}`, {
+      const res = await apiFetch(`/api/admin/approvals/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "approve" }),
@@ -191,7 +192,7 @@ export default function ApprovalsPage() {
     }
     try {
       setActionLoading(true)
-      const res = await fetch(`/api/admin/approvals/${rejectTarget.id}`, {
+      const res = await apiFetch(`/api/admin/approvals/${rejectTarget.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject", comment: rejectComment }),
@@ -221,7 +222,7 @@ export default function ApprovalsPage() {
     try {
       setCreateLoading(true)
       const amount = createForm.amount ? Number(createForm.amount) : null
-      const res = await fetch("/api/admin/approvals", {
+      const res = await apiFetch("/api/admin/approvals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

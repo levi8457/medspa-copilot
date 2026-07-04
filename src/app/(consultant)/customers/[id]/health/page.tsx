@@ -28,6 +28,7 @@ import Link from "next/link"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 // ============ 类型定义 ============
 
@@ -174,9 +175,9 @@ export default function HealthPage() {
     setError(null)
     try {
       const [customerRes, healthRes, interactionsRes] = await Promise.all([
-        fetch(`/api/customers/${customerId}`),
-        fetch(`/api/customers/${customerId}/health`),
-        fetch(`/api/customers/${customerId}/interactions?pageSize=20`),
+        apiFetch(`/api/customers/${customerId}`),
+        apiFetch(`/api/customers/${customerId}/health`),
+        apiFetch(`/api/customers/${customerId}/interactions?pageSize=20`),
       ])
 
       const customerResult = await customerRes.json()
@@ -213,7 +214,7 @@ export default function HealthPage() {
     setRecalculating(true)
     setError(null)
     try {
-      const res = await fetch(`/api/customers/${customerId}/health`, { method: "POST" })
+      const res = await apiFetch(`/api/customers/${customerId}/health`, { method: "POST" })
       const result = await res.json()
       if (!result.success) {
         throw new Error(result.error?.message || "重新评估失败")

@@ -7,6 +7,7 @@ import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
 import { FunnelChart } from "@/components/FunnelChart"
+import { apiFetch } from "@/lib/api-fetch"
 
 const statusMap: Record<string, { label: string; color: string; icon: typeof TrendingUp }> = {
   lead: { label: "线索", color: "var(--accent)", icon: Users },
@@ -40,7 +41,7 @@ export default function LifecyclePage() {
 
   const fetchLifecycleData = async () => {
     try {
-      const res = await fetch("/api/admin/lifecycle")
+      const res = await apiFetch("/api/admin/lifecycle")
       const result = await res.json()
       if (result.success) {
         setStats(result.data)

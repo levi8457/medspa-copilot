@@ -22,6 +22,7 @@ import {
 import Link from "next/link"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 // ============ 类型定义 ============
 
@@ -95,11 +96,15 @@ export default function InteractionsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 新增表单
+  // 新增表单（occurredAt 用本地时间，避免 datetime-local 时区错乱）
   const [formData, setFormData] = useState({
     channel: "wechat",
     direction: "consultant_initiated",
-    occurredAt: new Date().toISOString().slice(0, 16),
+    occurredAt: (() => {
+      const d = new Date()
+      const pad = (n: number) => String(n).padStart(2, "0")
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    })(),
     duration: "",
     content: "",
     summary: "",
@@ -116,7 +121,7 @@ export default function InteractionsPage() {
       // 注意：API 仅支持 channel 筛选，direction 在前端过滤
       const query = new URLSearchParams(paramsObj).toString()
 
-      const res = await fetch(`/api/customers/${customerId}/interactions?${query}`)
+      const res = await apiFetch(`/api/customers/${customerId}/interactions?${query}`)
       const result = await res.json()
       if (result.success) {
         const data = result.data as InteractionsApiResponse
@@ -141,7 +146,7 @@ export default function InteractionsPage() {
 
   const fetchCustomer = useCallback(async () => {
     try {
-      const res = await fetch(`/api/customers/${customerId}`)
+      const res = await apiFetch(`/api/customers/${customerId}`)
       const result = await res.json()
       if (result.success) {
         setCustomer({ id: result.data.id, name: result.data.name })
@@ -182,7 +187,7 @@ export default function InteractionsPage() {
         payload.replyTime = Number(formData.replyTime)
       }
 
-      const res = await fetch(`/api/customers/${customerId}/interactions`, {
+      const res = await apiFetch(`/api/customers/${customerId}/interactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

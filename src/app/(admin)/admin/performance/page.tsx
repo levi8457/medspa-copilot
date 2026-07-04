@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Trophy, Target, TrendingUp, TrendingDown, Clock, DollarSign, Users, Award, ChevronDown, ChevronUp } from "lucide-react"
+import { Trophy, Target, TrendingUp, TrendingDown, Clock, DollarSign, Users, Award, ChevronDown, ChevronUp, Download } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface PerformanceStats {
   totalRevenue: number
@@ -50,7 +51,7 @@ export default function PerformancePage() {
 
   const fetchPerformanceData = async () => {
     try {
-      const res = await fetch(`/api/admin/performance?period=${selectedPeriod}`)
+      const res = await apiFetch(`/api/admin/performance?period=${selectedPeriod}`)
       const result = await res.json()
       if (result.success) {
         setStats(result.data)
@@ -73,6 +74,12 @@ export default function PerformancePage() {
       setSortBy(field)
       setSortOrder("desc")
     }
+  }
+
+  const handleExport = () => {
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    window.location.href = `/api/export/performance?month=${month}&period=${selectedPeriod}`
   }
 
   if (loading) {
@@ -125,6 +132,13 @@ export default function PerformancePage() {
             <p className="text-[var(--foreground-secondary)] mt-1">追踪咨询师团队绩效，优化团队管理</p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--background)]/50 border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              导出
+            </button>
             <div className="flex items-center gap-2 p-1 bg-[var(--background)]/50 rounded-lg">
               {["week", "month", "quarter", "year"].map((period) => (
                 <button

@@ -24,6 +24,7 @@ import {
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
 import { TagCapsule } from "@/components/futuristic/TagCapsule"
+import { apiFetch } from "@/lib/api-fetch"
 
 // ============ 类型定义 ============
 
@@ -163,7 +164,7 @@ export function CustomerBatchList({
   // ============ 批量操作执行 ============
 
   const callBatchApi = async (payload: Record<string, unknown>) => {
-    const res = await fetch("/api/customers/batch", {
+    const res = await apiFetch("/api/customers/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -277,7 +278,7 @@ export function CustomerBatchList({
     setError(null)
     setScriptResults(null)
     try {
-      const res = await fetch("/api/customers/batch/scripts", {
+      const res = await apiFetch("/api/customers/batch/scripts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,6 +6,7 @@ import { Sparkles, Copy, Check, TrendingUp, Star, RefreshCw, ChevronRight } from
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { EnergyRing } from "@/components/futuristic/EnergyRing"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface Recommendation {
   id: string
@@ -41,7 +42,7 @@ export default function RecommendationsPage() {
   const fetchRecommendations = async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/recommendations")
+      const res = await apiFetch("/api/recommendations")
       const result = await res.json()
       if (result.success) {
         setRecommendations(result.data)
@@ -65,7 +66,7 @@ export default function RecommendationsPage() {
 
   const handleMarkAdopted = async (id: string) => {
     try {
-      const res = await fetch(`/api/recommendations/${id}`, {
+      const res = await apiFetch(`/api/recommendations/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "adopted" }),
@@ -80,7 +81,7 @@ export default function RecommendationsPage() {
     }
   }
 
-  const getScoreColor = (score: number) => {
+  const getScoreColor = (score: number): "success" | "primary" | "warning" | "accent" => {
     if (score >= 0.7) return "success"
     if (score >= 0.5) return "primary"
     if (score >= 0.3) return "warning"
@@ -88,10 +89,10 @@ export default function RecommendationsPage() {
   }
 
   const tierMap: Record<string, { label: string; color: string }> = {
-    A: { label: "A类", color: "#00FFA3" },
-    B: { label: "B类", color: "#00E5FF" },
-    C: { label: "C类", color: "#FFB300" },
-    D: { label: "D类", color: "#6B7280" },
+    A: { label: "A类", color: "var(--success)" },
+    B: { label: "B类", color: "var(--primary)" },
+    C: { label: "C类", color: "var(--warning)" },
+    D: { label: "D类", color: "var(--foreground-secondary)" },
   }
 
   if (loading) {
@@ -140,12 +141,12 @@ export default function RecommendationsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <GlowCard variant={getScoreColor(rec.score) as any}>
+              <GlowCard variant={getScoreColor(rec.score)}>
                 <div className="p-5">
                   <div className="flex items-start gap-4">
                     <EnergyRing
                       value={rec.score * 100}
-                      variant={getScoreColor(rec.score) as any}
+                      variant={getScoreColor(rec.score)}
                       size={80}
                       strokeWidth={8}
                       label="推荐度"

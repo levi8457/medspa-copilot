@@ -8,10 +8,9 @@ interface TransferButtonProps {
   customerId: string
   customerName: string
   currentConsultantId?: string | null
-  onTransfer: () => void
 }
 
-export function TransferButton({ customerId, customerName, currentConsultantId, onTransfer }: TransferButtonProps) {
+export function TransferButton({ customerId, customerName, currentConsultantId }: TransferButtonProps) {
   const [showModal, setShowModal] = useState(false)
 
   return (
@@ -29,7 +28,6 @@ export function TransferButton({ customerId, customerName, currentConsultantId, 
         currentConsultantId={currentConsultantId}
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        onTransfer={onTransfer}
       />
     </>
   )

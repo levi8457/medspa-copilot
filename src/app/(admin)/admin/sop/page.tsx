@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Edit, Trash2, CheckCircle, XCircle, Clock, FileText, Eye } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { SopEditor } from "@/components/sop/SopEditor"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface SopStage {
   id: string
@@ -43,7 +44,7 @@ export default function SopManagementPage() {
 
   const fetchSops = async () => {
     try {
-      const response = await fetch("/api/sops")
+      const response = await apiFetch("/api/sops")
       const result = await response.json()
       if (result.success) {
         setSops(result.data)
@@ -78,7 +79,7 @@ export default function SopManagementPage() {
     if (!confirm("确定要删除此 SOP 吗？")) return
 
     try {
-      await fetch(`/api/sops/${id}`, { method: "DELETE" })
+      await apiFetch(`/api/sops/${id}`, { method: "DELETE" })
       fetchSops()
     } catch (error) {
       console.error("删除 SOP 失败:", error)
@@ -88,13 +89,13 @@ export default function SopManagementPage() {
   const handleSubmit = async (sop: Partial<SopTemplate>) => {
     try {
       if (selectedSop) {
-        await fetch(`/api/sops/${selectedSop.id}`, {
+        await apiFetch(`/api/sops/${selectedSop.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sop),
         })
       } else {
-        await fetch("/api/sops", {
+        await apiFetch("/api/sops", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sop),

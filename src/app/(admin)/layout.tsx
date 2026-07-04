@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, FileAudio, ClipboardList, Settings, LogOut, UserSearch, TrendingUp, Target, Megaphone, Star, CheckSquare } from "lucide-react"
+import { signOut } from "next-auth/react"
+import { LayoutDashboard, Users, FileAudio, ClipboardList, Settings, LogOut, UserSearch, TrendingUp, Target, Megaphone, Star, CheckSquare, Crown } from "lucide-react"
 
 const navigation = [
   { name: "数据看板", href: "/admin/overview", icon: LayoutDashboard },
@@ -15,6 +16,7 @@ const navigation = [
   { name: "审批中心", href: "/admin/approvals", icon: CheckSquare },
   { name: "审核中心", href: "/admin/review", icon: ClipboardList },
   { name: "SOP管理", href: "/admin/sop", icon: FileAudio },
+  { name: "订阅管理", href: "/admin/billing", icon: Crown },
   { name: "系统设置", href: "/admin/settings", icon: Settings },
 ]
 
@@ -56,13 +58,16 @@ export default function AdminLayout({
         </nav>
 
         <div className="p-4 border-t border-[var(--border)]">
-          <Link
-            href="/api/auth/signout"
+          <button
+            onClick={async () => {
+              await signOut({ redirect: false })
+              window.location.href = "/medspa/login"
+            }}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--foreground-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] w-full transition-colors"
           >
             <LogOut className="w-5 h-5" />
             退出登录
-          </Link>
+          </button>
         </div>
       </aside>
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Users, TrendingUp, Clock, CheckCircle, UserPlus, Edit, Trash2, X } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface TeamMember {
   id: string
@@ -44,7 +45,7 @@ export default function TeamManagementPage() {
 
   const fetchTeamData = async () => {
     try {
-      const res = await fetch("/api/admin/team")
+      const res = await apiFetch("/api/admin/team")
       const result = await res.json()
       if (result.success) {
         setMembers(result.data.members)
@@ -70,7 +71,7 @@ export default function TeamManagementPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch("/api/team", {
+      const res = await apiFetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -116,7 +117,7 @@ export default function TeamManagementPage() {
 
     setEditSubmitting(true)
     try {
-      const res = await fetch(`/api/team/${editingId}`, {
+      const res = await apiFetch(`/api/team/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -149,7 +150,7 @@ export default function TeamManagementPage() {
 
     setDeletingId(member.id)
     try {
-      const res = await fetch(`/api/team/${member.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/team/${member.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) {
         alert(data.error?.message || "删除失败")
@@ -245,7 +246,9 @@ export default function TeamManagementPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 text-xs bg-[var(--card)] text-[var(--foreground-secondary)] rounded">咨询师</span>
+                      <span className={`px-2 py-0.5 text-xs rounded ${member.role === "org_admin" ? "bg-[var(--primary)]/20 text-[var(--primary)]" : "bg-[var(--card)] text-[var(--foreground-secondary)]"}`}>
+                        {member.role === "org_admin" ? "管理员" : "咨询师"}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-right text-[var(--foreground)]">{member.customers}</td>
                     <td className="py-3 px-4 text-right">

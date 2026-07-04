@@ -6,6 +6,7 @@ import { Users, TrendingUp, Target, Clock } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
 import { FunnelChart } from "@/components/FunnelChart"
+import { apiFetch } from "@/lib/api-fetch"
 
 interface OverviewStats {
   totalCustomers: number
@@ -30,7 +31,7 @@ export default function AdminOverviewPage() {
 
   const fetchOverviewStats = async () => {
     try {
-      const res = await fetch("/api/admin/overview")
+      const res = await apiFetch("/api/admin/overview")
       const result = await res.json()
       if (result.success) {
         setStats(result.data)

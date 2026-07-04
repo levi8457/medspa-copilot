@@ -1,0 +1,33 @@
+{
+  "name": "MedSpa Copilot — 医美 AI 智能管家",
+  "short_name": "MedSpa AI",
+  "description": "医美机构咨询师的 AI 助理",
+  "start_url": "/medspa/",
+  "scope": "/medspa/",
+  "display": "standalone",
+  "background_color": "#0A0E1A",
+  "theme_color": "#00E5FF",
+  "orientation": "portrait-primary",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/medspa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/medspa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/medspa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

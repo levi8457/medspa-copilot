@@ -6,20 +6,37 @@ import type { NextRequest } from "next/server"
 // Edge-compatible auth instance (no Prisma, no bcrypt)
 const { auth } = NextAuth(authConfig)
 
-// 公开路由（无需登录）
-const PUBLIC_ROUTES = ["/login", "/register", "/api/auth"]
+// 公开路由（无需登录，路径已剥离 basePath）
+const PUBLIC_ROUTES = [
+  "/login",
+  "/register",
+  "/api/auth",
+  "/api/plans",
+  "/api/trial",
+  "/site",
+  "/trial",
+]
 
-// 根据角色重定向
+// 根据角色重定向（返回不带 basePath 的路径）
 function getRedirectPath(role: string): string {
   switch (role) {
     case "super_admin":
-      return "/admin/overview"
+      return "/platform"
     case "org_admin":
       return "/admin/overview"
     case "consultant":
     default:
       return "/dashboard"
   }
+}
+
+// 构造带 basePath 的重定向 URL
+// 使用 request.nextUrl.clone() 确保 basePath 被保留
+function buildRedirectUrl(request: NextRequest, pathname: string): URL {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+  url.search = ""
+  return url
 }
 
 export async function middleware(request: NextRequest) {
@@ -34,15 +51,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 已登录用户访问登录页，重定向到对应页面
-  if (isPublicRoute && session) {
+  // 已登录用户访问登录/注册页，重定向到对应页面
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register")
+  if (isAuthPage && session) {
     const redirectPath = getRedirectPath(session.user.role)
-    return NextResponse.redirect(new URL(redirectPath, request.url))
+    return NextResponse.redirect(buildRedirectUrl(request, redirectPath))
   }
 
   // 未登录用户访问受保护路由，重定向到登录页
   if (!isPublicRoute && !session) {
-    const loginUrl = new URL("/login", request.url)
+    const loginUrl = buildRedirectUrl(request, "/login")
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
@@ -53,12 +71,12 @@ export async function middleware(request: NextRequest) {
 
     // 超级管理员路由
     if (pathname.startsWith("/super-admin") && role !== "super_admin") {
-      return NextResponse.redirect(new URL(getRedirectPath(role), request.url))
+      return NextResponse.redirect(buildRedirectUrl(request, getRedirectPath(role)))
     }
 
     // 机构管理员路由
     if (pathname.startsWith("/admin") && role !== "org_admin" && role !== "super_admin") {
-      return NextResponse.redirect(new URL(getRedirectPath(role), request.url))
+      return NextResponse.redirect(buildRedirectUrl(request, getRedirectPath(role)))
     }
   }
 
@@ -67,6 +85,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+    // 排除：静态资源、Next 内部、各类静态文件扩展名
+    "/((?!_next/static|_next/image|favicon.ico|public/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|json|webp|xml|txt|woff|woff2|css|js|map)$).*)",
   ],
 }
