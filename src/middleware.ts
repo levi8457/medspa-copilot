@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   "/api/trial",
   "/site",
   "/trial",
+  "/partner-policy",
 ]
 
 // 根据角色重定向（返回不带 basePath 的路径）

@@ -1,7 +1,8 @@
-﻿"use client"
+"use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   Mic,
   Users,
@@ -18,6 +19,7 @@ import {
   Quote,
   CheckCircle2,
   Sparkles,
+  Check,
 } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { HudPanel } from "@/components/futuristic/HudPanel"
@@ -94,18 +96,17 @@ const workflow = [
 const pricingPlans = [
   {
     name: "免费版",
-    price: 0,
-    period: "月",
+    price: { monthly: 0, yearly: 0 },
     description: "适合个人咨询师体验",
     features: ["每月 10 条录音分析", "基础客户标签", "5 个话术模板", "社区支持"],
     cta: "开始使用",
     popular: false,
     variant: "primary" as const,
+    ctaHref: "/trial",
   },
   {
     name: "专业版",
-    price: 299,
-    period: "月",
+    price: { monthly: 299, yearly: 239 },
     description: "适合小型医美机构",
     features: [
       "每月 500 条录音分析",
@@ -118,11 +119,11 @@ const pricingPlans = [
     cta: "免费试用",
     popular: true,
     variant: "accent" as const,
+    ctaHref: "/trial",
   },
   {
     name: "企业版",
-    price: 999,
-    period: "月",
+    price: { monthly: 999, yearly: 799 },
     description: "适合中大型医美连锁",
     features: [
       "无限录音分析",
@@ -136,6 +137,7 @@ const pricingPlans = [
     cta: "联系销售",
     popular: false,
     variant: "success" as const,
+    ctaHref: "/trial",
   },
 ]
 
@@ -170,6 +172,48 @@ const testimonials = [
 ]
 
 export default function HomePage() {
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [displayPrices, setDisplayPrices] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    const targets: Record<string, number> = {}
+    pricingPlans.forEach((plan) => {
+      targets[plan.name] = billingCycle === "yearly" ? plan.price.yearly : plan.price.monthly
+    })
+
+    const startPrices = { ...displayPrices }
+    const duration = 400
+    const startTime = performance.now()
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const easeOut = 1 - Math.pow(1 - progress, 3)
+
+      const next: Record<string, number> = {}
+      pricingPlans.forEach((plan) => {
+        const start = startPrices[plan.name] ?? targets[plan.name]
+        next[plan.name] = Math.round(start + (targets[plan.name] - start) * easeOut)
+      })
+
+      setDisplayPrices(next)
+
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }, [billingCycle])
+
+  useEffect(() => {
+    const initial: Record<string, number> = {}
+    pricingPlans.forEach((plan) => {
+      initial[plan.name] = plan.price.monthly
+    })
+    setDisplayPrices(initial)
+  }, [])
   return (
     <div className="flex flex-col">
       {/* Hero 区 */}
@@ -467,7 +511,7 @@ export default function HomePage() {
       </section>
 
       {/* 价格方案 */}
-      <section className="py-20 relative">
+      <section className="py-20 relative" id="pricing">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--accent)]/5 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
@@ -475,7 +519,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-center max-w-3xl mx-auto mb-16"
+            className="text-center max-w-3xl mx-auto mb-12"
           >
             <TagCapsule label="价格方案" variant="primary" size="md" />
             <h2 className="text-3xl sm:text-4xl font-bold mt-4 mb-4 text-[var(--foreground)]">
@@ -486,6 +530,55 @@ export default function HomePage() {
             </p>
           </motion.div>
 
+          {/* 计费周期切换器 */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="flex justify-center mb-12"
+          >
+            <div className="inline-flex items-center p-1 rounded-xl bg-[var(--background-card)]/80 border border-[var(--border)] backdrop-blur-sm">
+              <button
+                onClick={() => setBillingCycle("monthly")}
+                className={`relative px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  billingCycle === "monthly"
+                    ? "text-[var(--background)]"
+                    : "text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {billingCycle === "monthly" && (
+                  <motion.div
+                    layoutId="billing-active-bg"
+                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">按月付费</span>
+              </button>
+              <button
+                onClick={() => setBillingCycle("yearly")}
+                className={`relative px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                  billingCycle === "yearly"
+                    ? "text-[var(--background)]"
+                    : "text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {billingCycle === "yearly" && (
+                  <motion.div
+                    layoutId="billing-active-bg"
+                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">按年付费</span>
+                <span className="relative z-10 text-[10px] px-1.5 py-0.5 rounded bg-[var(--success)]/20 text-[var(--success)] font-semibold">
+                  省20%
+                </span>
+              </button>
+            </div>
+          </motion.div>
+
           <motion.div
             variants={staggerContainer}
             initial="initial"
@@ -494,15 +587,37 @@ export default function HomePage() {
             className="grid md:grid-cols-3 gap-6 items-start"
           >
             {pricingPlans.map((plan, index) => (
-              <motion.div key={index} variants={fadeInUp} className={plan.popular ? "md:-mt-4" : ""}>
+              <motion.div
+                key={plan.name}
+                variants={fadeInUp}
+                className={`${plan.popular ? "md:-mt-4" : ""} cursor-pointer`}
+                onClick={() => setSelectedPlan(selectedPlan === plan.name ? null : plan.name)}
+                whileHover={{ y: -4 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
                 <GlowCard
                   variant={plan.variant}
-                  className={`p-6 h-full relative ${plan.popular ? "ring-2 ring-[var(--accent)]/50" : ""}`}
+                  className={`p-6 h-full relative transition-all duration-300 ${
+                    selectedPlan === plan.name
+                      ? "ring-2 ring-[var(--primary)] scale-[1.02]"
+                      : plan.popular
+                        ? "ring-2 ring-[var(--accent)]/50"
+                        : ""
+                  }`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <TagCapsule label="最受欢迎" variant="accent" size="sm" />
                     </div>
+                  )}
+                  {selectedPlan === plan.name && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--primary)] flex items-center justify-center text-[var(--background)] shadow-lg shadow-[var(--primary)]/30"
+                    >
+                      <Check className="w-4 h-4" />
+                    </motion.div>
                   )}
                   <div className="mb-6">
                     <h3 className="text-xl font-bold text-[var(--foreground)] mb-2">
@@ -512,11 +627,32 @@ export default function HomePage() {
                       {plan.description}
                     </p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-[var(--foreground)]">
-                        ¥{plan.price}
+                      <span className="text-sm text-[var(--foreground-secondary)]">¥</span>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={billingCycle + plan.name}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                          className="text-4xl font-bold text-[var(--foreground)] font-mono tabular-nums"
+                        >
+                          {displayPrices[plan.name] ?? 0}
+                        </motion.span>
+                      </AnimatePresence>
+                      <span className="text-[var(--foreground-secondary)]">
+                        /{billingCycle === "monthly" ? "月" : "月（年付）"}
                       </span>
-                      <span className="text-[var(--foreground-secondary)]">/{plan.period}</span>
                     </div>
+                    {billingCycle === "yearly" && plan.price.yearly > 0 && (
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="text-xs text-[var(--success)] mt-2"
+                      >
+                        年付立省 ¥{(plan.price.monthly - plan.price.yearly) * 12}
+                      </motion.p>
+                    )}
                   </div>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, i) => (
@@ -527,10 +663,11 @@ export default function HomePage() {
                     ))}
                   </ul>
                   <Link
-                    href="/trial"
+                    href={plan.ctaHref}
+                    onClick={(e) => e.stopPropagation()}
                     className={`block w-full text-center py-2.5 rounded-lg font-medium text-sm transition-all ${
-                      plan.popular
-                        ? "bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--background)] hover:opacity-90"
+                      plan.popular || selectedPlan === plan.name
+                        ? "bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--background)] hover:opacity-90 shadow-lg shadow-[var(--primary)]/20"
                         : "border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--primary)]/50 hover:text-[var(--primary)]"
                     }`}
                   >

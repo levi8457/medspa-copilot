@@ -1,0 +1,968 @@
+// Prisma Schema - 医美 AI 智能管家
+// 多租户架构：所有业务表必须包含 orgId
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 认证相关 ====================
+
+enum UserRole {
+  super_admin   // 平台超级管理员
+  org_admin     // 机构管理员
+  consultant    // 咨询师
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String   // 机构名称
+  slug        String?  @unique // 机构标识
+  logo        String?  // Logo URL
+  isActive    Boolean  @default(true)
+  scriptConfig    String?  // 话术风格配置 JSON
+  notificationConfig String? // 通知配置 JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  customers   Customer[]
+  sops        SopTemplate[]
+  tagSchemas  TagSchema[]
+  auditLogs   AuditLog[]
+  subscriptions Subscription[]
+  orders      Order[]
+  usageRecords  UsageRecord[]
+  leadSources    LeadSource[]
+  leadAssignmentRules LeadAssignmentRule[]
+  projects    Project[]
+  scripts     ScriptLibrary[]
+  campaigns   MarketingCampaign[]
+  surveys     SatisfactionSurvey[]
+  approvals   ApprovalFlow[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  orgId         String
+  email         String   @unique
+  name          String?
+  password      String?  // hashed password
+  role          UserRole @default(consultant)
+  avatar        String?
+  phone         String?
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customers     Customer[]   @relation("ConsultantCustomers")
+  audioRecords  AudioRecord[]
+  followUpTasks FollowUpTask[]
+  auditLogs     AuditLog[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@index([orgId])
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== 业务核心模型 ====================
+
+model Customer {
+  id              String   @id @default(cuid())
+  orgId           String
+  consultantId    String?
+  name            String
+  phone           String?
+  wechat          String?
+  age             Int?
+  gender          String?
+  source          String?  // 来源渠道
+  status          String   @default("lead") // lead, contacted, negotiating, converted, churned
+  tier            String?  // A / B / C / D 客户分层
+  tierScore       Float?   // 0-100 综合得分
+  rfmScore        String?  // JSON: { recency, frequency, monetary, intent, potential }
+  healthScore     Float?   // 0-100 健康度
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  consultant      User?        @relation("ConsultantCustomers", fields: [consultantId], references: [id], onDelete: SetNull)
+  tags            CustomerTag[]
+  audioRecords    AudioRecord[]
+  followUpPlans   FollowUpPlan[]
+  followUpTasks   FollowUpTask[]
+  timelineEvents  TimelineEvent[]
+  consumptionRecords ConsumptionRecord[]
+  interactions    CustomerInteraction[]
+  recommendations ProjectRecommendation[]
+  schedules       Schedule[]
+  profileReports  CustomerProfileReport[]
+  healthScores    CustomerHealthScore[]
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([status])
+  @@index([tier])
+  @@index([healthScore])
+  @@map("customers")
+}
+
+model CustomerTag {
+  id             String   @id @default(cuid())
+  customerId     String
+  orgId          String
+  dimension      String   // 标签维度
+  value          String   // 标签值
+  confidence     Float?
+  sourceText     String?
+  sourceOffset   Int?
+  audioRecordId  String?
+  isManuallyModified Boolean @default(false)
+  modifiedBy     String?
+  modifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  audioRecord    AudioRecord? @relation(fields: [audioRecordId], references: [id])
+
+  @@unique([customerId, dimension])
+  @@index([customerId])
+  @@index([orgId])
+  @@index([dimension])
+  @@map("customer_tags")
+}
+
+model AudioRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String
+  fileName        String
+  fileSize        Int
+  duration        Int      // 秒
+  ossUrl          String   // OSS 存储 URL
+  transcript      String?
+  speakerDiary    String?  // JSON 字符串
+  status          String   @default("pending")
+  errorMessage    String?
+  analyzedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  consultant      User     @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  tags            CustomerTag[]
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([status])
+  @@map("audio_records")
+}
+
+model FollowUpPlan {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  title           String
+  description     String?
+  strategy        String?  // JSON 字符串
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tasks           FollowUpTask[]
+
+  @@index([orgId])
+  @@index([customerId])
+  @@map("follow_up_plans")
+}
+
+model FollowUpTask {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  customerId      String
+  consultantId    String
+  scheduledDate   DateTime
+  priority        Int      @default(0)
+  goal            String?
+  script          String?
+  status          String   @default("pending")
+  skipReason      String?
+  executedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  plan            FollowUpPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  consultant      User         @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("follow_up_tasks")
+}
+
+model TimelineEvent {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  type            String
+  title           String
+  content         String?
+  metadata        String?  // JSON 字符串
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([occurredAt])
+  @@map("timeline_events")
+}
+
+model ConsumptionRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  amount          Float
+  items           String?  // JSON 字符串
+  notes           String?
+  consumedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  // Relations
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@map("consumption_records")
+}
+
+// ==================== SOP 管理 ====================
+
+enum SopStatus {
+  draft
+  submitted
+  approved
+  rejected
+}
+
+model SopTemplate {
+  id              String    @id @default(cuid())
+  orgId           String
+  creatorId       String
+  name            String
+  description     String?
+  category        String?
+  stages          String    // JSON 字符串
+  status          SopStatus @default(draft)
+  reviewComment   String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  isActive        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([status])
+  @@map("sop_templates")
+}
+
+model TagSchema {
+  id              String   @id @default(cuid())
+  orgId           String
+  dimension       String
+  values          String   // JSON 字符串
+  isRequired      Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, dimension])
+  @@index([orgId])
+  @@map("tag_schemas")
+}
+
+model LeadSource {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  code            String
+  description     String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, code])
+  @@index([orgId])
+  @@map("lead_sources")
+}
+
+model LeadAssignmentRule {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  type            String   // round_robin / load_balanced / manual / rule_based
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true)
+  config          String?  // JSON 配置
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([priority])
+  @@map("lead_assignment_rules")
+}
+
+// ==================== 审计日志 ====================
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  orgId           String
+  userId          String?
+  action          String
+  resourceType    String
+  resourceId      String?
+  oldValue        String?  // JSON 字符串
+  newValue        String?  // JSON 字符串
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ==================== 计费系统 ====================
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   // 套餐名称
+  description     String?
+  maxSeats        Int      @default(5)     // 最大咨询师席位
+  maxRecordingHours Int    @default(10)    // 月录音时长配额（小时）
+  maxAiCalls      Int      @default(100)   // 月 AI 调用次数配额
+  maxStorage      Int      @default(5)     // 存储配额（GB）
+  priceMonthly    Float    @default(0) // 月价格（切 PG 后改 Decimal(10,2)）
+  priceYearly     Float    @default(0) // 年价格
+  trialDays       Int      @default(14)   // 试用天数
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  subscriptions   Subscription[]
+  orders          Order[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  status          String   @default("trial") // trial / active / suspended / expired / cancelled
+  seatsUsed       Int      @default(0)
+  seatsLimit      Int      @default(5)
+  startsAt        DateTime
+  endsAt          DateTime?
+  trialEndsAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+
+  @@index([orgId])
+  @@index([planId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orgId           String
+  planId          String
+  type            String   // new / renew / upgrade
+  amount          Float    // 金额
+  period          String   // monthly / yearly
+  status          String   @default("pending") // pending / paid / cancelled / refunded
+  paidAt          DateTime?
+  paidBy          String?  // 支付人 userId
+  paymentMethod   String?  // wechat / alipay / offline
+  paymentNo       String?  // 第三方支付流水号
+  invoiceNo       String?  // 发票号
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+  payments        Payment[]
+
+  @@index([orgId])
+  @@index([planId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  orderId         String
+  amount          Float    // 金额
+  method          String   // wechat / alipay / offline
+  status          String   @default("pending") // pending / success / failed / refunded
+  transactionNo   String?  // 第三方流水号
+  paidAt          DateTime?
+  rawResponse     String?  // 原始支付回调 JSON
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([transactionNo])
+  @@map("payments")
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  orgId           String
+  type            String   // asr_hours / ai_calls / storage_gb / active_users
+  date            DateTime
+  value           Float
+  createdAt       DateTime @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, type, date])
+  @@index([orgId])
+  @@index([type])
+  @@index([date])
+  @@map("usage_records")
+}
+
+// ==================== 项目库 ====================
+
+model Project {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  category        String   // 皮肤/整形/无创/口腔/抗衰...
+  priceMin        Float?
+  priceMax        Float?
+  description     String?
+  imageUrl        String?
+  tags            String?  // JSON: 标签数组
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  recommendations ProjectRecommendation[]
+
+  @@index([orgId])
+  @@index([category])
+  @@index([isActive])
+  @@map("projects")
+}
+
+model ProjectRecommendation {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  projectId       String
+  score           Float    // 推荐度评分 0-1
+  reason          String?  // 推荐理由
+  script          String?  // 推荐话术
+  conversionProb  Float?   // 预计转化概率
+  status          String   @default("pending") // pending / adopted / rejected / converted
+  adoptedAt       DateTime?
+  convertedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([projectId])
+  @@index([status])
+  @@map("project_recommendations")
+}
+
+// ==================== 话术库 ====================
+
+model ScriptLibrary {
+  id              String   @id @default(cuid())
+  orgId           String
+  creatorId       String?
+  title           String
+  content         String
+  category        String   // 开场白/异议处理/升单话术/回访话术/活动通知/项目介绍/邀约话术
+  tags            String?  // JSON: 标签数组
+  isOrgLevel      Boolean  @default(false)
+  useCount        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([category])
+  @@index([isOrgLevel])
+  @@map("script_library")
+}
+
+// ==================== 客户互动记录 ====================
+
+model CustomerInteraction {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  channel         String   // wechat / phone / in_store / recording / campaign
+  direction       String   // consultant_initiated / customer_initiated
+  duration        Int?
+  content         String?
+  summary         String?
+  hasReply        Boolean  @default(false)
+  replyTime       Int?
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([occurredAt])
+  @@index([channel])
+  @@map("customer_interactions")
+}
+
+// ==================== 日程管理 ====================
+
+model Schedule {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String?
+  consultantId    String
+  title           String
+  type            String   // in_store / phone_followup / wechat_followup / meeting / other
+  startTime       DateTime
+  endTime         DateTime?
+  reminderMinutes Int?
+  isAllDay        Boolean  @default(false)
+  isRecurring     Boolean  @default(false)
+  recurringRule   String?
+  status          String   @default("pending") // pending / completed / cancelled / no_show
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([consultantId])
+  @@index([customerId])
+  @@index([startTime])
+  @@index([status])
+  @@map("schedules")
+}
+
+// ==================== 营销活动 ====================
+
+model MarketingCampaign {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  type            String   // coupon / experience / referral / festival
+  status          String   @default("draft") // draft / active / paused / ended
+  config          String?  // JSON: 活动规则配置
+  startDate       DateTime
+  endDate         DateTime
+  budget          Float?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  participants    CampaignParticipant[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([type])
+  @@map("marketing_campaigns")
+}
+
+model CampaignParticipant {
+  id              String   @id @default(cuid())
+  orgId           String
+  campaignId      String
+  customerId      String
+  consultantId    String?
+  status          String   @default("issued") // issued / used / expired / cancelled
+  issuedAt        DateTime @default(now())
+  usedAt          DateTime?
+  notes           String?
+
+  campaign        MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([campaignId])
+  @@index([customerId])
+  @@index([status])
+  @@map("campaign_participants")
+}
+
+// ==================== 满意度调研 ====================
+
+model SatisfactionSurvey {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  type            String   // post_visit / service_review / nps
+  rating          Int?     // 1-5 星
+  dimensions      String?  // JSON: { effect, service, environment, price }
+  feedback        String?
+  npsScore        Int?     // 0-10 NPS 评分
+  status          String   @default("pending") // pending / completed / alerted
+  triggeredAt     DateTime @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([type])
+  @@index([status])
+  @@index([rating])
+  @@map("satisfaction_surveys")
+}
+
+// ==================== 审批流 ====================
+
+model ApprovalFlow {
+  id              String   @id @default(cuid())
+  orgId           String
+  type            String   // discount / project_plan / customer_transfer / refund
+  title           String
+  applicantId     String
+  status          String   @default("pending") // pending / approved / rejected / cancelled
+  content         String?  // JSON: 申请内容
+  customerId      String?
+  amount          Float?
+  currentStep     Int      @default(0)
+  totalSteps      Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  steps           ApprovalStep[]
+
+  @@index([orgId])
+  @@index([applicantId])
+  @@index([status])
+  @@index([type])
+  @@map("approval_flows")
+}
+
+model ApprovalStep {
+  id              String   @id @default(cuid())
+  flowId          String
+  stepOrder       Int
+  approverId      String?
+  approverRole    String   // org_admin / super_admin
+  status          String   @default("pending") // pending / approved / rejected
+  comment         String?
+  approvedAt      DateTime?
+
+  flow            ApprovalFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@index([flowId])
+  @@index([approverId])
+  @@index([status])
+  @@map("approval_steps")
+}
+
+model CustomerHealthScore {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  score           Float   // 0-100 综合健康度
+  level           String   // healthy(80+) / good(60-80) / warning(40-60) / danger(<40)
+  dimensions      String   // JSON: { interactionFrequency, recency, satisfaction, consumption, repurchase, activity }
+  trend           String?  // up / stable / down
+  riskReasons     String?  // JSON: 风险下降原因数组
+  rescueStrategy  String?  // JSON: 挽回策略建议
+  evaluatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([evaluatedAt])
+  @@map("customer_health_scores")
+}
+
+model CustomerProfileReport {
+  id              String   @id @default(cuid())
+  orgId           String
+  customerId      String
+  consultantId    String?
+  version         Int      @default(1)
+  overview        String?  // 基础画像速览
+  decisionStyle   String?  // 决策风格分析
+  communication   String?  // 沟通策略建议
+  coreNeeds       String?  // 核心需求与顾虑点
+  recommendations String?  // 推荐项目与时机
+  riskPoints      String?  // 风险点提示
+  nextActions     String?  // 下一步行动建议
+  fullContent     String   // 完整报告内容（Markdown）
+  status          String   @default("completed") // generating / completed / failed
+  generatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@map("customer_profile_reports")
+}
+
+model AIConfig {
+  id              String   @id @default(cuid())
+  scope           String   // global / org
+  orgId           String?
+  key             String   // deepseek_api_key / asr_provider / compliance_threshold / daily_call_limit / ...
+  value           String
+  description     String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([scope, orgId])
+  @@index([key])
+  @@map("ai_configs")
+}
+
+model PromptVersion {
+  id              String   @id @default(cuid())
+  promptType      String   // tag_extraction / strategy / script / compliance / health / profile
+  version         String
+  content         String
+  changeLog       String?
+  status          String   @default("draft") // draft / active / archived
+  createdBy       String?
+  createdAt       DateTime @default(now())
+
+  @@index([promptType, status])
+  @@map("prompt_versions")
+}
+
+model ComplianceWord {
+  id              String   @id @default(cuid())
+  scope           String   // global / org
+  orgId           String?
+  category        String   // prohibited_promise / medical_term / absolute_language / false_publicity / custom
+  word            String
+  replacement     String?
+  severity        String   @default("medium") // low / medium / high
+  createdAt       DateTime @default(now())
+
+  @@index([scope, orgId])
+  @@index([category])
+  @@map("compliance_words")
+}
+
+model AICallLog {
+  id              String   @id @default(cuid())
+  orgId           String?
+  userId          String?
+  provider        String   // deepseek / aliyun_asr / tencent_asr
+  model           String?
+  callType        String   // chat / asr / reasoner
+  promptTokens    Int?
+  completionTokens Int?
+  totalTokens     Int?
+  durationMs      Int?
+  success         Boolean  @default(true)
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([provider])
+  @@index([createdAt])
+  @@map("ai_call_logs")
+}
+
+model AlertRule {
+  id              String   @id @default(cuid())
+  name            String
+  metric          String   // error_rate / queue_backlog / api_latency / db_connections / disk_usage
+  condition       String   // greater_than / less_than
+  threshold       Float
+  severity        String   // info / warning / critical
+  notifyChannel   String   // site / sms / email
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([metric])
+  @@index([isActive])
+  @@map("alert_rules")
+}
+
+model AlertEvent {
+  id              String   @id @default(cuid())
+  ruleId          String?
+  ruleName        String
+  metric          String
+  value           Float
+  threshold       Float
+  severity        String
+  status          String   @default("pending") // pending / acknowledged / resolved / ignored
+  acknowledgedBy  String?
+  resolvedBy      String?
+  resolvedNote    String?
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@map("alert_events")
+}
+
+model Ticket {
+  id              String   @id @default(cuid())
+  orgId           String
+  userId          String
+  subject         String
+  category        String   // billing / technical / feature_request / other
+  priority        String   @default("normal") // low / normal / high / urgent
+  status          String   @default("pending") // pending / processing / resolved / closed
+  description     String
+  assigneeId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  closedAt        DateTime?
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id              String   @id @default(cuid())
+  ticketId        String
+  senderId        String?
+  senderRole      String   // user / super_admin
+  content         String
+  createdAt       DateTime @default(now())
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}

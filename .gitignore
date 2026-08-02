@@ -49,3 +49,6 @@ server.log
 
 # pnpm
 .pnpm-store
+
+# local notes
+SERVERS.md

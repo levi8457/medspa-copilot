@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { notifyTrialApplication } from "@/lib/notify-trial"
 
 const trialRegisterSchema = z.object({
   orgName: z.string().min(2, "机构名称至少2个字符"),
@@ -84,6 +85,19 @@ export async function POST(request: NextRequest) {
         },
       })
     })
+
+    // 发送试用申请通知邮件（失败不影响注册结果）
+    try {
+      await notifyTrialApplication({
+        orgName,
+        contactName,
+        phone,
+        createdAt: now,
+        trialEndsAt,
+      })
+    } catch (error) {
+      console.error("试用申请邮件通知失败:", error)
+    }
 
     // 不自动登录，引导用户前往登录页
     return NextResponse.json({

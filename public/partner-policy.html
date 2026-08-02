@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>区域合作服务商政策 — MedSpa Copilot 医美 AI 智能管家</title>
+<style>
+  :root {
+    --background: #0A0E1A;
+    --card: rgba(18, 24, 42, 0.72);
+    --card-solid: #12182A;
+    --border: rgba(139, 158, 197, 0.16);
+    --foreground: #EDF1FA;
+    --foreground-secondary: #8FA0BE;
+    --foreground-muted: #5A6B8C;
+    --primary: #00E5FF;
+    --accent: #7C4DFF;
+    --success: #00FFA3;
+    --warning: #FFB300;
+    --danger: #FF4D6A;
+    --glow-primary: 0 0 24px rgba(0, 229, 255, 0.35);
+    --glow-accent: 0 0 24px rgba(124, 77, 255, 0.35);
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ========== 背景：渐变 + 网格 + 光晕 ========== */
+  .bg-fixed-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 0%, rgba(0, 229, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 10%, rgba(124, 77, 255, 0.09), transparent 60%),
+      linear-gradient(180deg, #0A0E1A 0%, #0B1120 50%, #0A0E1A 100%);
+  }
+  .grid-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(139, 158, 197, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 158, 197, 0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 100%);
+    pointer-events: none;
+  }
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    z-index: -1;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .orb-1 { width: 420px; height: 420px; top: -120px; left: 18%; background: rgba(0, 229, 255, 0.10); }
+  .orb-2 { width: 480px; height: 480px; top: 30%; right: -140px; background: rgba(124, 77, 255, 0.12); }
+  .orb-3 { width: 380px; height: 380px; bottom: -100px; left: -120px; background: rgba(0, 255, 163, 0.07); }
+
+  /* ========== 顶部导航 ========== */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 14, 26, 0.78);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-badge {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #0A0E1A; font-size: 16px;
+    box-shadow: var(--glow-primary);
+  }
+  .logo-text {
+    font-weight: 800; font-size: 17px; letter-spacing: 0.2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { color: var(--foreground-secondary); text-decoration: none; font-size: 14px; transition: color .2s; }
+  .nav-links a:hover { color: var(--primary); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 22px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none; transition: all .2s;
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    color: #0A0E1A;
+    box-shadow: var(--glow-primary);
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent; color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ========== 主容器 ========== */
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ========== Hero ========== */
+  .hero {
+    position: relative;
+    padding: 92px 0 72px;
+    text-align: center;
+  }
+  .hero .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 999px;
+    font-size: 13px; color: var(--primary);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    background: rgba(0, 229, 255, 0.08);
+    margin-bottom: 26px;
+  }
+  .hero .tag .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success); box-shadow: 0 0 10px var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .hero h1 {
+    font-size: clamp(30px, 4.6vw, 54px);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradShift 6s ease infinite;
+  }
+  @keyframes gradShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  .hero p.sub {
+    max-width: 720px; margin: 0 auto 36px;
+    color: var(--foreground-secondary); font-size: 16px;
+  }
+  .hero .cta-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+  .hero .stat-row {
+    display: flex; justify-content: center; gap: 56px; flex-wrap: wrap;
+    margin-top: 56px;
+  }
+  .stat { text-align: center; }
+  .stat .num {
+    font-size: 30px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary);
+    text-shadow: 0 0 18px rgba(0, 229, 255, 0.5);
+  }
+  .stat .lbl { font-size: 13px; color: var(--foreground-muted); margin-top: 4px; }
+
+  /* ========== 通用区块 ========== */
+  .section { padding: 72px 0; }
+  .section-head { text-align: center; margin-bottom: 48px; }
+  .section-head .kicker {
+    font-size: 13px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--primary); margin-bottom: 10px;
+  }
+  .section-head h2 { font-size: clamp(24px, 3vw, 34px); font-weight: 800; }
+  .section-head p { color: var(--foreground-secondary); margin-top: 12px; font-size: 15px; }
+
+  /* ========== 核心条款 4 卡 ========== */
+  .core-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 22px;
+  }
+  .core-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px 26px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+    overflow: hidden;
+  }
+  .core-card::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    opacity: 0; transition: opacity .25s;
+  }
+  .core-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(0, 229, 255, 0.45);
+    box-shadow: var(--glow-primary);
+  }
+  .core-card:hover::before { opacity: 1; }
+  .core-card .idx {
+    font-size: 13px; font-weight: 700; color: var(--primary);
+    letter-spacing: 1px; margin-bottom: 14px;
+  }
+  .core-card .icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
+  }
+  .core-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .core-card p { font-size: 14px; color: var(--foreground-secondary); }
+
+  /* ========== 详细条款 ========== */
+  .terms-list { display: flex; flex-direction: column; gap: 20px; }
+  .term-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px 32px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .term-block .term-head {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+  }
+  .term-block .term-num {
+    flex-shrink: 0;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(0,229,255,.16), rgba(124,77,255,.16));
+    border: 1px solid rgba(0,229,255,.3);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: var(--primary); font-size: 15px;
+  }
+  .term-block h3 { font-size: 18px; font-weight: 700; }
+  .term-block .term-desc { color: var(--foreground-secondary); font-size: 14px; margin-bottom: 16px; }
+  .term-block ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .term-block ul li {
+    position: relative; padding-left: 24px;
+    font-size: 14px; color: var(--foreground);
+  }
+  .term-block ul li::before {
+    content: "";
+    position: absolute; left: 4px; top: 9px;
+    width: 8px; height: 8px; border-radius: 2px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    transform: rotate(45deg);
+  }
+  .term-block ul li strong { color: var(--primary); font-weight: 600; }
+  .term-block ul li .sub { color: var(--foreground-muted); font-size: 13px; }
+
+  /* ========== 合作流程 ========== */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+  }
+  .flow-step {
+    text-align: center; padding: 26px 18px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); position: relative;
+  }
+  .flow-step .step-num {
+    width: 40px; height: 40px; margin: 0 auto 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #0A0E1A; font-weight: 800; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--glow-accent);
+  }
+  .flow-step h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .flow-step p { font-size: 13px; color: var(--foreground-secondary); }
+
+  /* ========== FAQ ========== */
+  .faq-list { display: flex; flex-direction: column; gap: 14px; }
+  .faq-item {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .faq-item summary {
+    padding: 20px 26px; cursor: pointer; font-size: 15px; font-weight: 600;
+    list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    transition: color .2s;
+  }
+  .faq-item summary:hover { color: var(--primary); }
+  .faq-item summary::after {
+    content: "+"; font-size: 20px; color: var(--primary); font-weight: 400;
+    transition: transform .25s;
+  }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-item .faq-body { padding: 0 26px 22px; color: var(--foreground-secondary); font-size: 14px; }
+
+  /* ========== CTA ========== */
+  .cta-banner {
+    border-radius: 22px; padding: 54px 40px; text-align: center;
+    background:
+      linear-gradient(135deg, rgba(0,229,255,.10), rgba(124,77,255,.12)),
+      var(--card);
+    border: 1px solid rgba(0,229,255,.25);
+    box-shadow: inset 0 0 60px rgba(0,229,255,.05);
+  }
+  .cta-banner h2 { font-size: clamp(22px, 3vw, 30px); font-weight: 800; margin-bottom: 14px; }
+  .cta-banner p { color: var(--foreground-secondary); font-size: 15px; margin-bottom: 28px; }
+
+  /* ========== 页脚 ========== */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0 30px; margin-top: 40px;
+    background: rgba(10, 14, 26, 0.6);
+  }
+  .footer-grid {
+    display: grid; grid-template-columns: 2fr 1fr 1fr;
+    gap: 32px; margin-bottom: 28px;
+  }
+  .footer-grid h5 { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .footer-grid p, .footer-grid li { font-size: 13px; color: var(--foreground-secondary); }
+  .footer-grid ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .footer-bottom {
+    border-top: 1px solid var(--border); padding-top: 22px;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-size: 12px; color: var(--foreground-muted);
+  }
+
+  /* ========== 动画 ========== */
+  .reveal {
+    opacity: 0; transform: translateY(26px);
+    transition: opacity .7s ease, transform .7s ease;
+  }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 760px) {
+    .nav-links a:not(.btn) { display: none; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .hero .stat-row { gap: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-fixed-layer"></div>
+<div class="grid-overlay"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ===== 导航 ===== -->
+<header>
+  <div class="nav-inner">
+    <a class="logo" href="#top">
+      <span class="logo-badge">M</span>
+      <span class="logo-text">MedSpa Copilot</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#core">核心条款</a>
+      <a href="#terms">政策明细</a>
+      <a href="#flow">合作流程</a>
+      <a href="#faq">常见问题</a>
+      <a class="btn btn-ghost" href="site">返回官网</a>
+      <a class="btn btn-primary" href="#contact">申请合作</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===== Hero ===== -->
+<section class="hero container" id="top">
+  <span class="tag"><span class="dot"></span>2026 年度区域合作计划 · 正式开放招募</span>
+  <h1>区域合作服务商<br><span class="grad">合作政策说明</span></h1>
+  <p class="sub">
+    MedSpa Copilot 医美 AI 智能管家，以「区域保护 + 总部赋能」双轮驱动的渠道合作模式，
+    与志同道合的服务商共同深耕医美机构智能化服务市场，共享万亿医美数字化红利。
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#terms">查看完整政策</a>
+    <a class="btn btn-ghost" href="#contact">立即申请合作</a>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="num">1 区域</div><div class="lbl">一区一商 · 严格保护</div></div>
+    <div class="stat"><div class="num">0 费用</div><div class="lbl">部署交付运维全免费</div></div>
+    <div class="stat"><div class="num">统一价</div><div class="lbl">全国统一零售价格体系</div></div>
+    <div class="stat"><div class="num">7×24</div><div class="lbl">总部技术服务保障</div></div>
+  </div>
+</section>
+
+<!-- ===== 核心条款 4 卡 ===== -->
+<section class="section" id="core">
+  <div class="container">
+    <div class="section-head">
+      <div class="kicker">Core Policy</div>
+      <h2>四大核心合作条款</h2>
+      <p>保障服务商区域权益，总部承担全部技术重资产，服务商专注本地市场经营</p>
+    </div>
+    <div class="core-grid">
+      <div class="core-card reveal">
+        <div class="idx">POLICY 01</div>
+        <div class="icon" style="background:rgba(0,229,255,.12); color:var(--primary); box-shadow:0 0 20px rgba(0,229,255,.25);">🛡️</div>
+        <h3>区域保护制度</h3>
+        <p>合作服务商享受授权区域独家保护。区域内任何渠道（官网、线下、转介绍、线上投放等）成交的辖区客户，一律归属该区域服务商所有，跨区订单由总部系统自动划拨。</p>
+      </div>
+      <div class="core-card reveal">
+        <div class="idx">POLICY 02</div>
+        <div class="icon" style="background:rgba(124,77,255,.14); color:var(--accent); box-shadow:0 0 20px rgba(124,77,255,.25);">🤝</div>
+        <h3>上门演示 · 商务洽谈</h3>
+        <p>服务商负责辖区客户的上门产品演示、功能讲解、商务谈判与合同签订，为客户提供贴身、及时的本地化服务，总部全程提供演示与话术支持。</p>
+      </div>
+      <div class="core-card reveal">
+        <div class="idx">POLICY 03</div>
+        <div class="icon" style="background:rgba(0,255,163,.12); color:var(--success); box-shadow:0 0 20px rgba(0,255,163,.25);">⚙️</div>
+        <h3>总部负责部署与运维</h3>
+        <p>软件部署、数据迁移、系统交付，以及全部版本更新、功能迭代、缺陷修复与日常维护均由总部承担。服务商零技术负担，只管市场。</p>
+      </div>
+      <div class="core-card reveal">
+        <div class="idx">POLICY 04</div>
+        <div class="icon" style="background:rgba(255,179,0,.12); color:var(--warning); box-shadow:0 0 20px rgba(255,179,0,.25);">💎</div>
+        <h3>全国统一零售价</h3>
+        <p>软件产品实行全国统一零售价格体系，服务商在统一价格框架内洽谈成交，不得擅自加价或降价；服务商收益来自总部按政策发放的渠道佣金与返点。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 详细政策条款 ===== -->
+<section class="section" id="terms" style="padding-top:0;">
+  <div class="container">
+    <div class="section-head">
+      <div class="kicker">Policy Details</div>
+      <h2>区域合作政策明细</h2>
+      <p>以下条款构成《MedSpa Copilot 区域合作服务商合作协议》的核心内容，具体以正式协议文本为准</p>
+    </div>
+
+    <div class="terms-list">
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">一</span><h3>区域保护制度</h3></div>
+        <p class="term-desc">区域合作方享受严格的区域经营保护，总部从系统与制度两个层面保障辖区客户归属。</p>
+        <ul>
+          <li><strong>一区一商</strong>：全国市场按行政区划划分合作区域，每个区域仅授权一家合作服务商，杜绝同区域恶性竞争。</li>
+          <li><strong>客户归属原则</strong>：任何渠道（官网咨询、线上投放、转介绍、总部线索、线下活动等）成交的辖区客户，均为该区域服务商所有。</li>
+          <li><strong>系统级划拨</strong>：客户按归属区域自动归档至对应服务商名下，跨区域成交由总部系统自动识别并划拨，保障服务商利益不受侵占。</li>
+          <li><strong>跨区报备机制</strong>：如遇客户跨区经营等特殊情况，由总部协调相关区域服务商协商处理，确保各方权益。</li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">二</span><h3>服务商职责：上门演示与商务洽谈</h3></div>
+        <p class="term-desc">服务商是辖区市场的经营主体，负责把产品带进客户现场、把合同签回来。</p>
+        <ul>
+          <li><strong>上门演示</strong>：负责辖区客户的上门产品演示与功能讲解，提供现场操作体验，展示 AI 录音解析、客户画像、智能跟进等核心能力。</li>
+          <li><strong>商务洽谈</strong>：负责与客户的商务谈判、方案报价、合同签订与回款跟进，是客户的第一责任人。</li>
+          <li><strong>本地化服务</strong>：负责辖区客户日常客情维护与使用辅导，作为客户与总部之间的服务桥梁。</li>
+          <li><strong>市场拓展</strong>：负责辖区市场的开拓与培育，包括本地医美机构名单梳理、行业活动参与、口碑经营等。</li>
+          <li><span class="sub">总部支持：总部提供标准演示环境、演示话术、行业案例、招投标材料等全套销售工具包。</span></li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">三</span><h3>总部职责：部署交付与持续维护</h3></div>
+        <p class="term-desc">技术重资产全部由总部承担，服务商无需任何技术投入即可开展业务。</p>
+        <ul>
+          <li><strong>部署与交付</strong>：软件部署、环境搭建、数据迁移、系统初始化与验收交付，全部由总部负责完成。</li>
+          <li><strong>版本更新</strong>：产品功能迭代、版本升级由总部统一规划并自动推送更新，服务商与客户无需任何操作。</li>
+          <li><strong>维护保障</strong>：系统缺陷修复、故障处理、性能优化等日常维护由总部 7×24 小时技术团队负责。</li>
+          <li><strong>数据安全</strong>：客户数据加密存储、异地容灾备份由总部统一保障，签署数据安全承诺书。</li>
+          <li><span class="sub">服务标准：总部提供远程协助与在线工单，重大故障 2 小时内响应，一般问题 24 小时内处理。</span></li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">四</span><h3>统一零售价格体系</h3></div>
+        <p class="term-desc">软件服务实行全国统一零售价格，服务商以统一价格对外成交，收益清晰可预期。</p>
+        <ul>
+          <li><strong>统一零售价</strong>：产品执行全国统一零售价格（含 SaaS 年费席位价、增值用量包），服务商不得擅自加价或降价销售。</li>
+          <li><strong>价格组成</strong>：基础席位年费 + 增值用量包（AI 语音解析时长 / 智能调用次数），按实际用量计费，透明可查。</li>
+          <li><strong>渠道收益</strong>：服务商收益 = 零售成交价与总部结算价之间的渠道佣金，按季度结算，另享业绩返点阶梯奖励。</li>
+          <li><strong>特批权限</strong>：重大客户或集团客户如需价格优惠，由服务商发起申请，总部特批后执行，特批差额由总部补贴承担。</li>
+          <li><span class="sub">价目说明：最新《产品价目表》由总部统一发布并适用于全国，服务商应以总部最新版本为准。</span></li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">五</span><h3>服务商合作权益</h3></div>
+        <p class="term-desc">除四大核心条款外，合作服务商还享有以下支持与激励。</p>
+        <ul>
+          <li><strong>市场支持</strong>：总部提供品牌物料、宣传素材、行业活动展位支持与联合推广资源。</li>
+          <li><strong>线索分配</strong>：总部线上渠道（官网、投放）收集的辖区线索，按区域规则自动分配给对应服务商跟进。</li>
+          <li><strong>培训赋能</strong>：总部定期组织产品培训、销售话术培训、行业知识培训与区域经营辅导。</li>
+          <li><strong>业绩激励</strong>：按年度累计成交额设置阶梯返点与年度冲刺奖励，多劳多得。</li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">六</span><h3>合作条件与合作流程</h3></div>
+        <p class="term-desc">总部对服务商进行资质审核与区域适配评估，保障区域市场健康发展。</p>
+        <ul>
+          <li><strong>资质要求</strong>：具有合法经营资质的企业或团队；具备医美、美业或本地企业服务客户资源者优先；具备基本的销售与服务能力。</li>
+          <li><strong>合作保证金</strong>：按区域等级缴纳合作保证金，合作期满无违约全额退还。</li>
+          <li><strong>业绩考核</strong>：签订年度合作目标，设置业绩考核与区域经营质量评估，保障区域市场得到有效经营。</li>
+        </ul>
+      </div>
+
+      <div class="term-block reveal">
+        <div class="term-head"><span class="term-num">七</span><h3>违约处理与退出机制</h3></div>
+        <p class="term-desc">明确的规则边界，保护总部、服务商与客户的长期利益。</p>
+        <ul>
+          <li><strong>违约情形</strong>：跨区抢单、擅自改动价格体系、损害品牌形象、泄露客户数据等行为视为违约。</li>
+          <li><strong>处理方式</strong>：首次违约书面警告并整改；情节严重或屡次违约的，暂停佣金结算直至解除合作。</li>
+          <li><strong>退出机制</strong>：服务商可提前 90 天书面申请退出；合作终止后，辖区存量客户的后续服务由总部接管，服务商已产生的佣金正常结算。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 合作流程 ===== -->
+<section class="section" id="flow">
+  <div class="container">
+    <div class="section-head">
+      <div class="kicker">How to Join</div>
+      <h2>合作流程</h2>
+      <p>从申请到授权，最快 7 个工作日完成全部流程</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step reveal"><div class="step-num">1</div><h4>提交申请</h4><p>填写合作申请表，提交企业资料与区域意向</p></div>
+      <div class="flow-step reveal"><div class="step-num">2</div><h4>资质审核</h4><p>总部评估企业资质、资源能力与区域适配度</p></div>
+      <div class="flow-step reveal"><div class="step-num">3</div><h4>签约授权</h4><p>签署合作协议，缴纳保证金，颁发区域授权</p></div>
+      <div class="flow-step reveal"><div class="step-num">4</div><h4>培训赋能</h4><p>产品培训、销售培训、演示环境与工具包交付</p></div>
+      <div class="flow-step reveal"><div class="step-num">5</div><h4>正式展业</h4><p>授权生效，开展辖区市场拓展与客户服务</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="section" id="faq" style="padding-top:0;">
+  <div class="container">
+    <div class="section-head">
+      <div class="kicker">FAQ</div>
+      <h2>常见问题</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item reveal">
+        <summary>区域保护如何保障"任何渠道成交的客户都归我"？</summary>
+        <div class="faq-body">总部在系统中内置区域归属规则：客户建档时按经营所在地自动匹配辖区服务商，官网咨询、投放线索、转介绍等所有渠道的成交客户均自动归入辖区服务商名下。如发生跨区抢单，总部系统留痕可查，并按规定处理违约方。</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>我们完全没有技术团队，能做这个项目吗？</summary>
+        <div class="faq-body">完全可以。部署、交付、升级、维护全部由总部承担，服务商零技术负担。您只需负责本地上门演示、商务洽谈与客户关系维护，总部提供全套演示工具与销售支持。</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>零售价是固定的吗？客户想打折怎么办？</summary>
+        <div class="faq-body">全国统一零售价是标准价格。遇到大客户、集团客户确实需要优惠时，由服务商向总部申请特批价，特批差额由总部补贴，不影响服务商佣金收益。</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>我的佣金和返点怎么计算、多久结算一次？</summary>
+        <div class="faq-body">服务商收益 = 零售成交价与总部结算价之间的渠道佣金 + 阶梯业绩返点。佣金按季度核算并结算至对公账户，年度返点在次年一季度统一发放，具体以合作协议为准。</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>一个区域只有一家服务商，区域很大忙不过来怎么办？</summary>
+        <div class="faq-body">区域按行政区划合理划分，可细至地级市、区县。如区域市场容量大，可申请细分或申请总部加派市场支持；同一区域原则上保持单一服务商，保障您的区域利益最大化。</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="section" id="contact" style="padding-top:0;">
+  <div class="container">
+    <div class="cta-banner reveal">
+      <h2>成为区域独家合作服务商</h2>
+      <p>抢占区域市场先机，与 MedSpa Copilot 共享医美数字化增长红利<br>合作名额有限，欢迎咨询详情</p>
+      <a class="btn btn-primary" href="mailto:togens@agent.qq.com">📮 合作洽谈：togens@agent.qq.com</a>
+      <a class="btn btn-ghost" href="tel:18996270323" style="margin-left:12px;">📞 189-9627-0323</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 页脚 ===== -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="logo" href="#top" style="margin-bottom:14px; display:inline-flex;">
+          <span class="logo-badge">M</span>
+          <span class="logo-text">MedSpa Copilot</span>
+        </a>
+        <p style="margin-top:12px; max-width:400px;">医美 AI 智能管家，为医美机构咨询师打造的 AI 助理，覆盖录音解析、客户画像、智能跟进与 SOP 标准化运营。</p>
+      </div>
+      <div>
+        <h5>政策导航</h5>
+        <ul>
+          <li><a href="#core" style="color:var(--foreground-secondary); text-decoration:none;">核心条款</a></li>
+          <li><a href="#terms" style="color:var(--foreground-secondary); text-decoration:none;">政策明细</a></li>
+          <li><a href="#flow" style="color:var(--foreground-secondary); text-decoration:none;">合作流程</a></li>
+          <li><a href="#faq" style="color:var(--foreground-secondary); text-decoration:none;">常见问题</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>联系我们</h5>
+        <ul>
+          <li>邮箱：qjkm88@agent.qq.com</li>
+          <li>电话：18996270323</li>
+          <li>地址：上海市浦东新区</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 MedSpa AI. All rights reserved.</span>
+      <span>沪ICP备2026000000号-1 · 本页面为合作政策说明，最终以正式协议文本为准</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // 滚动渐显
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+</script>
+
+</body>
+</html>

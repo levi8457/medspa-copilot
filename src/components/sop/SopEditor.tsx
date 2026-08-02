@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
 import {
   ReactFlow,
   Background,
@@ -50,37 +50,41 @@ export function SopEditor({ initialStages = [], onChange, readOnly = false }: So
   const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[])
   const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[])
   const [showAddMenu, setShowAddMenu] = useState(false)
+  // 只初始化一次：父组件挂载后才异步填充 initialStages，需等数据到位再建图，
+  // 但编辑过程中父组件回调（onChange→setStages）不能再触发重建，否则输入会中断。
+  const initializedRef = useRef(false)
 
   useEffect(() => {
-    if (initialStages.length > 0) {
-      const flowNodes: Node[] = initialStages.map((stage) => ({
-        id: stage.id,
-        type: "stage",
-        position: { x: stage.positionX, y: stage.positionY },
-        data: {
-          label: stage.label,
-          description: stage.description,
-          touchpointType: stage.touchpointType,
-          scriptTemplate: stage.scriptTemplate,
-          delayDays: stage.delayDays,
-        },
-      }))
+    if (initializedRef.current || initialStages.length === 0) return
+    initializedRef.current = true
 
-      const flowEdges: Edge[] = []
-      for (let i = 0; i < initialStages.length - 1; i++) {
-        flowEdges.push({
-          id: `e-${initialStages[i].id}-${initialStages[i + 1].id}`,
-          source: initialStages[i].id,
-          target: initialStages[i + 1].id,
-          animated: true,
-          style: { stroke: "var(--primary)", strokeWidth: 2 },
-        })
-      }
+    const flowNodes: Node[] = initialStages.map((stage) => ({
+      id: stage.id,
+      type: "stage",
+      position: { x: stage.positionX, y: stage.positionY },
+      data: {
+        label: stage.label,
+        description: stage.description,
+        touchpointType: stage.touchpointType,
+        scriptTemplate: stage.scriptTemplate,
+        delayDays: stage.delayDays,
+      },
+    }))
 
-      setNodes(flowNodes)
-      setEdges(flowEdges)
+    const flowEdges: Edge[] = []
+    for (let i = 0; i < initialStages.length - 1; i++) {
+      flowEdges.push({
+        id: `e-${initialStages[i].id}-${initialStages[i + 1].id}`,
+        source: initialStages[i].id,
+        target: initialStages[i + 1].id,
+        animated: true,
+        style: { stroke: "var(--primary)", strokeWidth: 2 },
+      })
     }
-  }, [])
+
+    setNodes(flowNodes)
+    setEdges(flowEdges)
+  }, [initialStages, setNodes, setEdges])
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -103,15 +107,21 @@ export function SopEditor({ initialStages = [], onChange, readOnly = false }: So
     const newNode: Node = {
       id: newId,
       type: "stage",
-      position: { x: 250, y: (nodes.length + 1) * 150 },
+      position: { x: 100, y: 0 },
       data: {
         label: `新阶段 ${nodes.length + 1}`,
         touchpointType,
-        delayDays: nodes.length * 7,
+        delayDays: nodes.length === 0 ? 0 : 7,
+        scriptTemplate: "",
       },
     }
 
     setNodes((nds) => {
+      // 新节点排到当前最后一个节点下方，避免重叠
+      if (nds.length > 0) {
+        const maxY = Math.max(...nds.map((n) => n.position.y))
+        newNode.position = { x: 100, y: maxY + 150 }
+      }
       if (nds.length > 0) {
         const lastNode = nds[nds.length - 1]
         setEdges((eds) => [
@@ -131,37 +141,47 @@ export function SopEditor({ initialStages = [], onChange, readOnly = false }: So
     setShowAddMenu(false)
   }
 
-  const deleteNode = (nodeId: string) => {
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId))
-    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
-  }
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId))
+      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
+    },
+    [setNodes, setEdges]
+  )
 
+  const updateNode = useCallback(
+    (nodeId: string, data: Partial<StageNodeData>) => {
+      setNodes((nds) => nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n)))
+    },
+    [setNodes]
+  )
+
+  // 节点/边变化时把流程数据上报给父组件
   useEffect(() => {
-    if (onChange) {
-      const stages: SopStage[] = nodes.map((node) => ({
-        id: node.id,
-        label: (node.data as StageNodeData).label,
-        description: (node.data as StageNodeData).description,
-        touchpointType: (node.data as StageNodeData).touchpointType,
-        scriptTemplate: (node.data as StageNodeData).scriptTemplate,
-        delayDays: (node.data as StageNodeData).delayDays,
-        positionX: node.position.x,
-        positionY: node.position.y,
-      }))
-      onChange(stages)
-    }
+    if (!onChange) return
+    const stages: SopStage[] = nodes.map((node) => ({
+      id: node.id,
+      label: (node.data as StageNodeData).label,
+      description: (node.data as StageNodeData).description,
+      touchpointType: (node.data as StageNodeData).touchpointType,
+      scriptTemplate: (node.data as StageNodeData).scriptTemplate,
+      delayDays: (node.data as StageNodeData).delayDays,
+      positionX: node.position.x,
+      positionY: node.position.y,
+    }))
+    onChange(stages)
   }, [nodes, onChange])
 
   return (
-    <div className="relative h-[500px] w-full rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+    <div className="relative h-[400px] w-full rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
       <ReactFlow
         nodes={nodes.map((node) => ({
           ...node,
           data: {
             ...node.data,
-            onDelete: deleteNode,
+            onDelete: readOnly ? undefined : deleteNode,
+            onUpdate: readOnly ? undefined : updateNode,
           },
-          draggable: !readOnly,
         }))}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -224,7 +244,7 @@ export function SopEditor({ initialStages = [], onChange, readOnly = false }: So
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <p className="text-[var(--foreground-secondary)]">点击「添加阶段」开始构建 SOP 流程</p>
-            <p className="text-xs text-[var(--foreground-secondary)] mt-1">拖拽节点调整位置，拖拽连线建立关系</p>
+            <p className="text-xs text-[var(--foreground-secondary)] mt-1">拖拽节点调整位置，展开节点可编辑名称/天数/话术</p>
           </div>
         </div>
       )}

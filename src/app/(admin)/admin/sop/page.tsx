@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Edit, Trash2, CheckCircle, XCircle, Clock, FileText, Eye } from "lucide-react"
+import { Plus, Edit, Trash2, CheckCircle, XCircle, Clock, FileText, Eye, X } from "lucide-react"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { SopEditor } from "@/components/sop/SopEditor"
 import { apiFetch } from "@/lib/api-fetch"
@@ -35,12 +35,24 @@ const statusMap: Record<string, { label: string; color: string; icon: React.Reac
   rejected: { label: "已驳回", color: "var(--danger)", icon: <XCircle className="w-4 h-4" /> },
 }
 
+const categoryOptions = [
+  "新客转化",
+  "复购激活",
+  "流失挽回",
+  "会员关怀",
+  "术后管理",
+  "节日营销",
+  "其他",
+]
+
 export default function SopManagementPage() {
   const [sops, setSops] = useState<SopTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSop, setSelectedSop] = useState<SopTemplate | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isViewing, setIsViewing] = useState(false)
+  const [statusFilter, setStatusFilter] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("")
 
   const fetchSops = async () => {
     try {
@@ -59,6 +71,12 @@ export default function SopManagementPage() {
   useEffect(() => {
     fetchSops()
   }, [])
+
+  const filteredSops = sops.filter((sop) => {
+    if (statusFilter && sop.status !== statusFilter) return false
+    if (categoryFilter && sop.category !== categoryFilter) return false
+    return true
+  })
 
   const handleCreate = () => {
     setSelectedSop(null)
@@ -145,10 +163,51 @@ export default function SopManagementPage() {
           </button>
         </div>
 
+        {/* Filters */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+          >
+            <option value="">全部状态</option>
+            <option value="draft">草稿</option>
+            <option value="submitted">待审核</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已驳回</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-lg text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+          >
+            <option value="">全部分类</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {(statusFilter || categoryFilter) && (
+            <button
+              onClick={() => {
+                setStatusFilter("")
+                setCategoryFilter("")
+              }}
+              className="text-sm text-[var(--primary)] hover:underline"
+            >
+              清除筛选
+            </button>
+          )}
+          <span className="text-xs text-[var(--foreground-secondary)]">
+            共 {filteredSops.length} 个模板
+          </span>
+        </div>
+
         {/* SOP List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
-            {sops.map((sop, index) => {
+            {filteredSops.map((sop, index) => {
               const statusInfo = statusMap[sop.status] || statusMap.draft
               let stageCount = 0
               try {
@@ -233,6 +292,16 @@ export default function SopManagementPage() {
               </p>
             </GlowCard>
           )}
+
+          {sops.length > 0 && filteredSops.length === 0 && (
+            <GlowCard className="col-span-full p-8 text-center">
+              <FileText className="w-12 h-12 text-[var(--foreground-secondary)] mx-auto mb-4" />
+              <p className="text-[var(--foreground)] font-medium">没有符合筛选条件的 SOP</p>
+              <p className="text-sm text-[var(--foreground-secondary)] mt-1">
+                试试调整筛选条件
+              </p>
+            </GlowCard>
+          )}
         </div>
 
         {/* Edit Modal */}
@@ -287,8 +356,9 @@ export default function SopManagementPage() {
                   <button
                     onClick={() => setIsViewing(false)}
                     className="p-2 hover:bg-[var(--border)] rounded-lg transition-colors"
+                    title="关闭"
                   >
-                    <XCircle className="w-5 h-5 text-[var(--foreground-secondary)]" />
+                    <X className="w-5 h-5 text-[var(--foreground-secondary)]" />
                   </button>
                 </div>
                 {selectedSop.description && (
@@ -372,11 +442,11 @@ function SopForm({
             className="w-full p-3 bg-[var(--background)] border border-[var(--border)] rounded-lg text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
           >
             <option value="">请选择分类</option>
-            <option value="新客转化">新客转化</option>
-            <option value="复购激活">复购激活</option>
-            <option value="流失挽回">流失挽回</option>
-            <option value="节日营销">节日营销</option>
-            <option value="其他">其他</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -403,7 +473,7 @@ function SopForm({
         />
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
+      <div className="sticky bottom-0 flex justify-end gap-3 pt-4 pb-2 -mb-4 bg-[var(--card)]/95 backdrop-blur rounded-b-xl">
         <button
           type="button"
           onClick={onCancel}

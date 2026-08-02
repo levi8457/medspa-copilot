@@ -137,6 +137,12 @@ export default function MarketingLayout({
             {/* CTA 按钮 + 移动端菜单按钮 */}
             <div className="flex items-center gap-4">
               <Link
+                href="/login"
+                className="hidden sm:inline-flex items-center px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium text-sm hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+              >
+                登录
+              </Link>
+              <Link
                 href="/trial"
                 className="hidden sm:inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--background)] font-medium text-sm hover:opacity-90 transition-opacity"
               >
@@ -184,8 +190,14 @@ export default function MarketingLayout({
                   )
                 })}
                 <Link
+                  href="/login"
+                  className="block text-center px-4 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium text-sm mt-2"
+                >
+                  登录
+                </Link>
+                <Link
                   href="/trial"
-                  className="block text-center px-4 py-2.5 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--background)] font-medium text-sm mt-4"
+                  className="block text-center px-4 py-2.5 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--background)] font-medium text-sm mt-2"
                 >
                   免费试用
                 </Link>
