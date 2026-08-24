@@ -40,8 +40,12 @@ echo "✅ 构建完成"
 
 # 6. 重启服务
 echo "🔄 重启服务..."
-# 停止现有进程
-pkill -f "next start" 2>/dev/null || true
+# Next 的生产进程名通常是 next-server，而不是 next start。按监听端口停止，
+# 避免旧实例占用端口后让新版本在后台启动失败。
+if command -v fuser >/dev/null 2>&1 && fuser -n tcp "$PORT" >/dev/null 2>&1; then
+    echo "停止占用端口 $PORT 的旧 Web 进程..."
+    fuser -k -TERM "${PORT}/tcp" || true
+fi
 sleep 2
 
 # 使用 start.sh 启动
@@ -68,11 +72,12 @@ sleep 3
 if curl -fsS "http://127.0.0.1:${PORT}/medspa/api/health" >/dev/null; then
     echo "✅ 服务运行正常 (健康检查已通过)"
 else
-    echo "⚠️ 服务可能未正常启动，请检查日志"
+    echo "❌ 服务未通过健康检查，请检查日志"
     echo "   查看进程: ps aux | grep next"
     echo "   查看 Web 日志: tail -n 100 /tmp/medspa-web.log"
     echo "   查看 Worker 日志: tail -n 100 /tmp/medspa-worker.log"
     echo "   手动启动: cd $PROJECT_DIR && PORT=$PORT pnpm start"
+    exit 1
 fi
 
 echo ""
