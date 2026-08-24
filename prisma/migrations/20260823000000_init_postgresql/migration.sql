@@ -143,7 +143,6 @@ CREATE TABLE "follow_up_plans" (
     "id" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
-    "sourceAudioRecordId" TEXT,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "strategy" TEXT,
@@ -187,24 +186,6 @@ CREATE TABLE "timeline_events" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "timeline_events_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "script_generations" (
-    "id" TEXT NOT NULL,
-    "orgId" TEXT NOT NULL,
-    "taskId" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
-    "consultantId" TEXT NOT NULL,
-    "inputSnapshot" TEXT NOT NULL,
-    "output" TEXT NOT NULL,
-    "subjectLine" TEXT,
-    "keyPoints" TEXT,
-    "complianceResult" TEXT NOT NULL,
-    "model" TEXT NOT NULL DEFAULT 'deepseek-chat',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "script_generations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -793,7 +774,7 @@ CREATE INDEX "customer_tags_orgId_idx" ON "customer_tags"("orgId");
 CREATE INDEX "customer_tags_dimension_idx" ON "customer_tags"("dimension");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "customer_tags_customerId_dimension_value_key" ON "customer_tags"("customerId", "dimension", "value");
+CREATE UNIQUE INDEX "customer_tags_customerId_dimension_key" ON "customer_tags"("customerId", "dimension");
 
 -- CreateIndex
 CREATE INDEX "audio_records_orgId_idx" ON "audio_records"("orgId");
@@ -808,8 +789,6 @@ CREATE INDEX "audio_records_consultantId_idx" ON "audio_records"("consultantId")
 CREATE INDEX "audio_records_status_idx" ON "audio_records"("status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "follow_up_plans_sourceAudioRecordId_key" ON "follow_up_plans"("sourceAudioRecordId");
-
 -- CreateIndex
 CREATE INDEX "follow_up_plans_orgId_idx" ON "follow_up_plans"("orgId");
 
@@ -836,21 +815,6 @@ CREATE INDEX "timeline_events_customerId_idx" ON "timeline_events"("customerId")
 
 -- CreateIndex
 CREATE INDEX "timeline_events_occurredAt_idx" ON "timeline_events"("occurredAt");
-
--- CreateIndex
-CREATE INDEX "script_generations_orgId_idx" ON "script_generations"("orgId");
-
--- CreateIndex
-CREATE INDEX "script_generations_taskId_idx" ON "script_generations"("taskId");
-
--- CreateIndex
-CREATE INDEX "script_generations_customerId_idx" ON "script_generations"("customerId");
-
--- CreateIndex
-CREATE INDEX "script_generations_consultantId_idx" ON "script_generations"("consultantId");
-
--- CreateIndex
-CREATE INDEX "script_generations_createdAt_idx" ON "script_generations"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "consumption_records_orgId_idx" ON "consumption_records"("orgId");
@@ -1172,12 +1136,6 @@ ALTER TABLE "follow_up_tasks" ADD CONSTRAINT "follow_up_tasks_customerId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "timeline_events" ADD CONSTRAINT "timeline_events_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "script_generations" ADD CONSTRAINT "script_generations_orgId_fkey" FOREIGN KEY ("orgId") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "script_generations" ADD CONSTRAINT "script_generations_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "follow_up_tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "consumption_records" ADD CONSTRAINT "consumption_records_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
