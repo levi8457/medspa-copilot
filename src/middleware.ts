@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   "/login",
   "/register",
   "/api/auth",
+  "/api/health",
   "/api/plans",
   "/api/trial",
   "/site",
