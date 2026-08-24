@@ -5,6 +5,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/opt/medspa-copilot"
+PORT="${PORT:-3010}"
 
 echo "========================================"
 echo "  MedSpa Copilot 部署脚本"
@@ -49,8 +50,8 @@ if [ -f "$PROJECT_DIR/start.sh" ]; then
     nohup bash "$PROJECT_DIR/start.sh" > /dev/null 2>&1 &
     echo "✅ 服务已通过 start.sh 启动"
 else
-    nohup pnpm start > /dev/null 2>&1 &
-    echo "✅ 服务已通过 pnpm start 启动"
+    nohup env PORT="$PORT" pnpm start >> /tmp/medspa-web.log 2>&1 &
+    echo "✅ 服务已通过 pnpm start 启动 (端口 $PORT)"
 fi
 
 # 录音解析依赖独立 Worker；Web 服务正常不代表解析任务会被消费。
@@ -64,13 +65,14 @@ fi
 
 # 7. 验证服务
 sleep 3
-if curl -fsS http://127.0.0.1:3010/medspa/api/health >/dev/null; then
+if curl -fsS "http://127.0.0.1:${PORT}/medspa/api/health" >/dev/null; then
     echo "✅ 服务运行正常 (健康检查已通过)"
 else
     echo "⚠️ 服务可能未正常启动，请检查日志"
     echo "   查看进程: ps aux | grep next"
+    echo "   查看 Web 日志: tail -n 100 /tmp/medspa-web.log"
     echo "   查看 Worker 日志: tail -n 100 /tmp/medspa-worker.log"
-    echo "   手动启动: cd $PROJECT_DIR && pnpm start"
+    echo "   手动启动: cd $PROJECT_DIR && PORT=$PORT pnpm start"
 fi
 
 echo ""
