@@ -123,7 +123,7 @@ export default function LeadsManagementPage() {
         const res = await apiFetch("/api/team")
         const result = await res.json()
         if (result.success) {
-          setConsultants(result.data.members.map((m: any) => ({ id: m.id, name: m.name })))
+          setConsultants(result.data.members.map((m: { id: string; name: string | null }) => ({ id: m.id, name: m.name })))
         }
       } catch (error) {
         console.error("获取咨询师列表失败:", error)

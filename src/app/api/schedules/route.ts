@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date")
     const status = searchParams.get("status")
 
-    const where: any = { orgId, consultantId }
+    const where: Prisma.ScheduleWhereInput = { orgId, consultantId }
 
     if (date) {
       const startDate = new Date(date)

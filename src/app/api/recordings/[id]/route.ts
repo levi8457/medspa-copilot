@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { withTenantFilter, validateResourceOwnership } from "@/lib/db-tenant"
+import { validateResourceOwnership } from "@/lib/db-tenant"
 
 // GET - 获取单个录音详情
 export async function GET(
@@ -32,7 +32,12 @@ export async function GET(
     return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "录音不存在" } }, { status: 404 })
   }
 
-  return NextResponse.json({ success: true, data: recording })
+  const { ossUrl: _storageKey, ...recordingData } = recording
+  void _storageKey
+  return NextResponse.json({
+    success: true,
+    data: { ...recordingData, audioUrl: `/api/recordings/${id}/media` },
+  })
 }
 
 // PATCH - 更新录音状态（用于手动触发解析或标记状态）

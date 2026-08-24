@@ -2,7 +2,7 @@
 # MedSpa Copilot 服务器部署脚本
 # 在服务器上执行：bash /opt/medspa-copilot/deploy.sh
 
-set -e
+set -euo pipefail
 
 PROJECT_DIR="/opt/medspa-copilot"
 
@@ -25,15 +25,17 @@ echo "📦 安装依赖..."
 pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 echo "✅ 依赖安装完成"
 
-# 4. 构建项目
+# 4. 生成 Prisma 客户端并应用已审核的数据库迁移。
+# 生产环境不能使用 db push，否则数据库结构变更没有可追溯记录。
+echo "🗄️ 应用数据库迁移..."
+pnpm db:generate
+pnpm db:deploy
+echo "✅ 数据库迁移完成"
+
+# 5. 构建项目
 echo "🔨 构建项目..."
 pnpm build
 echo "✅ 构建完成"
-
-# 5. 同步数据库
-echo "🗄️ 同步数据库..."
-pnpm prisma db push 2>/dev/null || echo "⚠️ 数据库同步跳过（无schema变更）"
-echo "✅ 数据库同步完成"
 
 # 6. 重启服务
 echo "🔄 重启服务..."
@@ -51,18 +53,28 @@ else
     echo "✅ 服务已通过 pnpm start 启动"
 fi
 
+# 录音解析依赖独立 Worker；Web 服务正常不代表解析任务会被消费。
+if [ -f "$PROJECT_DIR/start-worker.sh" ]; then
+    chmod +x "$PROJECT_DIR/start-worker.sh"
+    bash "$PROJECT_DIR/start-worker.sh"
+    echo "✅ 录音解析 Worker 已重启"
+else
+    echo "⚠️ 未找到 start-worker.sh，录音解析 Worker 未启动"
+fi
+
 # 7. 验证服务
 sleep 3
-if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3010 | grep -q "200\|302\|307"; then
-    echo "✅ 服务运行正常 (端口 3010)"
+if curl -fsS http://127.0.0.1:3010/medspa/api/health >/dev/null; then
+    echo "✅ 服务运行正常 (健康检查已通过)"
 else
     echo "⚠️ 服务可能未正常启动，请检查日志"
     echo "   查看进程: ps aux | grep next"
+    echo "   查看 Worker 日志: tail -n 100 /tmp/medspa-worker.log"
     echo "   手动启动: cd $PROJECT_DIR && pnpm start"
 fi
 
 echo ""
 echo "========================================"
 echo "  部署完成！"
-echo "  访问地址: http://115.28.185.181:8888/medspa"
+echo "  请使用已配置的域名或反向代理地址访问 /medspa"
 echo "========================================"

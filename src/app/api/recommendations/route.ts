@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 
@@ -17,7 +18,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get("customerId")
 
-    const where: any = { orgId, consultantId }
+    const where: Prisma.ProjectRecommendationWhereInput = { orgId }
+    if (session.user.role === "consultant") {
+      where.customer = { is: { consultantId } }
+    }
     if (customerId) {
       where.customerId = customerId
     }
@@ -66,16 +70,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const customerWhere: Prisma.CustomerWhereInput = {
+      id: customerId,
+      orgId,
+      ...(session.user.role === "consultant" ? { consultantId: session.user.id } : {}),
+    }
+
     const [customer, projects, existingRecs] = await Promise.all([
-      prisma.customer.findUnique({
-        where: { id: customerId },
+      prisma.customer.findFirst({
+        where: customerWhere,
         include: { tags: true },
       }),
       prisma.project.findMany({
         where: { orgId, isActive: true },
       }),
       prisma.projectRecommendation.findMany({
-        where: { customerId, status: "pending" },
+        where: { orgId, customerId, status: "pending" },
       }),
     ])
 

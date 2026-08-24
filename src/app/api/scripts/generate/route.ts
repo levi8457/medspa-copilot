@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { validateResourceOwnership } from "@/lib/db-tenant"
 import { generateScript } from "@/lib/ai/generate-script"
 import { complianceCheck } from "@/lib/ai/compliance-check"
+import { recordScriptGeneration } from "@/lib/ai/script-generation-audit"
 
 // POST - 生成跟进话术
 export async function POST(request: NextRequest) {
@@ -14,9 +15,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { taskId, customerId } = body
+    const { taskId } = body
 
-    if (!taskId || !customerId) {
+    if (!taskId) {
       return NextResponse.json(
         { success: false, error: { code: "MISSING_PARAMS", message: "缺少必要参数" } },
         { status: 400 }
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: { code: "TASK_NOT_FOUND", message: "任务不存在" } }, { status: 404 })
     }
 
+    // Customer identity is derived from the authorized task, never from the client.
+    const customerId = task.customerId
+    const hasCustomerAccess = await validateResourceOwnership("Customer", customerId, session)
+    if (!hasCustomerAccess) {
+      return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: "无权访问此客户" } }, { status: 403 })
+    }
+
     // 获取客户标签
     const tags = await prisma.customerTag.findMany({
       where: { customerId, orgId: session.user.orgId },
@@ -55,8 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取客户信息
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, orgId: session.user.orgId },
       select: { name: true },
     })
 
@@ -93,6 +101,22 @@ export async function POST(request: NextRequest) {
         },
       })
     }
+
+    await recordScriptGeneration({
+      orgId: task.orgId,
+      taskId: task.id,
+      customerId,
+      consultantId: session.user.id,
+      inputSnapshot: {
+        customerTags,
+        objective: task.goal || "跟进客户",
+        scriptDirection: scriptData.direction || "",
+        hookContent: scriptData.hook?.content || "",
+        tone: scriptData.tone || "warm",
+      },
+      result: scriptResult,
+      compliance,
+    })
 
     return NextResponse.json({
       success: true,

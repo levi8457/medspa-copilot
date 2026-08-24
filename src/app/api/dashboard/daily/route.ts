@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { withTenantFilter } from "@/lib/db-tenant"
+import { withTenantFilter, tenantWhere } from "@/lib/db-tenant"
+import { z } from "zod"
+
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日期格式无效")
 
 // GET - 获取每日工作台数据
 export async function GET(request: NextRequest) {
@@ -11,25 +14,30 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url)
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0]
+  const requestedDate = searchParams.get("date") || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" })
+  const parsedDate = dateSchema.safeParse(requestedDate)
+  if (!parsedDate.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "VALIDATION_ERROR", message: "日期格式无效，应为 YYYY-MM-DD" } },
+      { status: 400 }
+    )
+  }
+  const date = parsedDate.data
 
   try {
     // 获取今日待跟进任务
-    const todayStart = new Date(date)
-    todayStart.setHours(0, 0, 0, 0)
-    const todayEnd = new Date(date)
-    todayEnd.setHours(23, 59, 59, 999)
+    const todayStart = new Date(`${date}T00:00:00+08:00`)
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
-    const where: Record<string, unknown> = {
+    const dayWhere: Record<string, unknown> = {
       scheduledDate: {
         gte: todayStart,
-        lte: todayEnd,
+        lt: todayEnd,
       },
-      status: "pending",
     }
 
     const baseArgs = {
-      where,
+      where: { ...dayWhere, status: { in: ["pending", "postponed"] } },
       orderBy: { priority: "asc" as const },
       include: {
         plan: {
@@ -49,7 +57,7 @@ export async function GET(request: NextRequest) {
     // 获取客户信息
     const customerIds = [...new Set(tasks.map((t) => t.customerId))]
     const customers = await prisma.customer.findMany({
-      where: { id: { in: customerIds } },
+      where: tenantWhere("Customer", session, { id: { in: customerIds } }),
       select: {
         id: true,
         name: true,
@@ -89,23 +97,19 @@ export async function GET(request: NextRequest) {
     })
 
     // 获取统计数据
-    const todayDate = new Date(date)
+    const statsWhere = tenantWhere("FollowUpTask", session, dayWhere)
 
     const [totalTasks, completedTasks, skippedTasks] = await Promise.all([
+      prisma.followUpTask.count({ where: statsWhere }),
       prisma.followUpTask.count({
         where: {
-          ...((args.where as Record<string, unknown>) || {}),
-        },
-      }),
-      prisma.followUpTask.count({
-        where: {
-          ...((args.where as Record<string, unknown>) || {}),
+          ...statsWhere,
           status: "done",
         },
       }),
       prisma.followUpTask.count({
         where: {
-          ...((args.where as Record<string, unknown>) || {}),
+          ...statsWhere,
           status: "skipped",
         },
       }),

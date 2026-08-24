@@ -29,7 +29,7 @@ function getSystemPrompt(): string {
 }
 
 interface ExtractTagsInput {
-  /** 带说话人标注的转写文本，格式：[customer] xxx\n[consultant] xxx */
+  /** 带说话人标注的转写文本，未知角色格式为 [unknown:<providerSpeakerId>]。 */
   transcriptWithSpeakers: string;
   /** 客户已有信息（可选），JSON 字符串或描述文本 */
   existingCustomerInfo?: string;
@@ -47,7 +47,7 @@ export async function extractTags(
   const systemPrompt = getSystemPrompt();
 
   const userPrompt = [
-    "以下是一段医美面谈对话转写，说话人已标注（consultant=咨询师，customer=客户）。",
+    "以下是一段医美面谈对话转写。consultant/customer 是已验证角色；unknown:<id> 仅为 ASR 分组，不能当作已验证角色。",
     "请按照规则提取客户标签，严格输出 JSON。",
     "",
     "【客户已有信息】",

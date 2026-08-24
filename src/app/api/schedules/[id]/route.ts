@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 
@@ -37,7 +38,7 @@ export async function PUT(
       )
     }
 
-    const updateData: any = {}
+    const updateData: Prisma.ScheduleUpdateInput = {}
     if (status !== undefined) updateData.status = status
     if (title !== undefined) updateData.title = title
     if (type !== undefined) updateData.type = type

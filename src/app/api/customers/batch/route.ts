@@ -316,7 +316,7 @@ async function handleTaskStatus(
 
 /**
  * 批量打标签
- * - 对每个客户 upsert CustomerTag（按 customerId + dimension 唯一约束）
+ * - 对每个客户 upsert CustomerTag（按 customerId + dimension + value 唯一约束）
  * - 写一条汇总 AuditLog
  */
 async function handleAddTag(
@@ -330,9 +330,14 @@ async function handleAddTag(
   let affected = 0
   for (const customerId of input.customerIds) {
     await tx.customerTag.upsert({
-      where: { customerId_dimension: { customerId, dimension: tagKey } },
+      where: {
+        customerId_dimension_value: {
+          customerId,
+          dimension: tagKey,
+          value: tagValue,
+        },
+      },
       update: {
-        value: tagValue,
         isManuallyModified: true,
         modifiedBy: ctx.userId,
         modifiedAt: now,

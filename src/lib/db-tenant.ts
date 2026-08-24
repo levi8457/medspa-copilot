@@ -32,6 +32,25 @@ export function withTenantFilter<M extends Prisma.ModelName>(
   session: Session | null,
   args: Record<string, unknown> = {}
 ): Record<string, unknown> {
+  const { where: suppliedWhere, ...rest } = args
+
+  return {
+    ...rest,
+    where: tenantWhere(model, session, suppliedWhere as Record<string, unknown> | undefined),
+  }
+}
+
+/**
+ * 创建可直接传给 Prisma `where` 的租户条件。
+ *
+ * 将此函数与 `withTenantFilter` 分开，避免调用方把完整查询参数误传给
+ * `where`，从而静默丢失 orgId 或 consultantId 过滤。
+ */
+export function tenantWhere<M extends Prisma.ModelName>(
+  model: M,
+  session: Session | null,
+  suppliedWhere: Record<string, unknown> = {}
+): Record<string, unknown> {
   if (!session?.user?.orgId) {
     throw new Error("未授权访问：缺少机构信息")
   }
@@ -42,11 +61,11 @@ export function withTenantFilter<M extends Prisma.ModelName>(
 
   // 超级管理员可以查看所有数据
   if (role === "super_admin") {
-    return args
+    return { ...suppliedWhere }
   }
 
-  // 构建 where 条件
-  const where = (args.where as Record<string, unknown>) || {}
+  // Clone the caller input so this helper never mutates a reusable query object.
+  const where = { ...suppliedWhere }
 
   // 注入 orgId 过滤
   if (TENANT_MODELS.includes(model)) {
@@ -64,7 +83,7 @@ export function withTenantFilter<M extends Prisma.ModelName>(
     }
   }
 
-  return { ...args, where }
+  return where
 }
 
 /**

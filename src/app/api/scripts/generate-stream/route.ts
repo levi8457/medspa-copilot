@@ -2,25 +2,11 @@ import { NextRequest } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { validateResourceOwnership } from "@/lib/db-tenant"
-import fs from "node:fs"
-import path from "node:path"
-import OpenAI from "openai"
+import { generateScript } from "@/lib/ai/generate-script"
+import { complianceCheck } from "@/lib/ai/compliance-check"
+import { recordScriptGeneration } from "@/lib/ai/script-generation-audit"
 
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
-})
-
-function loadPrompt(filename: string): string {
-  return fs.readFileSync(path.join(process.cwd(), "prompts", filename), "utf-8")
-}
-
-function getSystemPrompt(): string {
-  const full = loadPrompt("script-generation.md")
-  const match = full.match(/## System Prompt([\s\S]*?)## User Prompt/)
-  if (!match) throw new Error("script-generation.md 格式错误：找不到 System Prompt 段落")
-  return match[1].trim()
-}
+const CHUNK_SIZE = 24
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -29,121 +15,142 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { taskId, customerId } = body
-
-  if (!taskId || !customerId) {
+  const { taskId } = body
+  if (!taskId) {
     return new Response("Missing params", { status: 400 })
   }
 
-  const hasAccess = await validateResourceOwnership("FollowUpTask", taskId, session)
-  if (!hasAccess) {
+  const hasTaskAccess = await validateResourceOwnership("FollowUpTask", taskId, session)
+  if (!hasTaskAccess) {
     return new Response("Forbidden", { status: 403 })
   }
 
   const task = await prisma.followUpTask.findUnique({
     where: { id: taskId },
-    include: { plan: { select: { strategy: true } } },
   })
-
   if (!task) {
     return new Response("Task not found", { status: 404 })
   }
 
-  const tags = await prisma.customerTag.findMany({
-    where: { customerId, orgId: session.user.orgId },
-  })
-
-  const customerTags: Record<string, unknown> = {}
-  for (const tag of tags) {
-    customerTags[tag.dimension] = tag.value
+  const customerId = task.customerId
+  const hasCustomerAccess = await validateResourceOwnership("Customer", customerId, session)
+  if (!hasCustomerAccess) {
+    return new Response("Forbidden", { status: 403 })
   }
 
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
-    select: { name: true },
-  })
+  const [tags, customer] = await Promise.all([
+    prisma.customerTag.findMany({ where: { customerId, orgId: session.user.orgId } }),
+    prisma.customer.findFirst({
+      where: { id: customerId, orgId: session.user.orgId },
+      select: { name: true },
+    }),
+  ])
+  if (!customer) {
+    return new Response("Customer not found", { status: 404 })
+  }
 
-  const scriptData = task.script ? JSON.parse(task.script) : {}
-  const systemPrompt = getSystemPrompt()
+  const customerTags: Record<string, string[]> = {}
+  for (const tag of tags) {
+    customerTags[tag.dimension] ??= []
+    customerTags[tag.dimension].push(tag.value)
+  }
 
-  const userPrompt = [
-    "请根据以下信息，生成一段微信跟进话术，严格输出 JSON。",
-    "",
-    "【客户标签】",
-    JSON.stringify(customerTags, null, 2),
-    "",
-    "【本次跟进目标】",
-    task.goal || "跟进客户",
-    "",
-    "【话术方向要点】",
-    scriptData.direction || "",
-    "",
-    "【跟进抓手】",
-    scriptData.hook?.content || "",
-    "",
-    "【语气风格】",
-    scriptData.tone || "warm",
-    "",
-    "【客户称呼】",
-    customer?.name || "客户",
-  ].join("\n")
+  let scriptData: Record<string, unknown> = {}
+  try {
+    scriptData = task.script ? JSON.parse(task.script) : {}
+  } catch {
+    return new Response("Task script data is invalid", { status: 500 })
+  }
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const completion = await deepseek.chat.completions.create({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7,
-          max_tokens: 2048,
-          stream: true,
+        // Do not expose model output until the independent compliance check passes.
+        const scriptResult = await generateScript({
+          customerTags,
+          objective: task.goal || "跟进客户",
+          scriptDirection: typeof scriptData.direction === "string" ? scriptData.direction : "",
+          hookContent:
+            typeof scriptData.hook === "object" && scriptData.hook !== null &&
+            "content" in scriptData.hook && typeof scriptData.hook.content === "string"
+              ? scriptData.hook.content
+              : "",
+          tone:
+            scriptData.tone === "professional" || scriptData.tone === "casual"
+              ? scriptData.tone
+              : "warm",
+          customerName: customer.name || "客户",
+        })
+        const compliance = await complianceCheck({
+          script: scriptResult.script,
+          customerName: customer.name || "客户",
         })
 
-        let accumulated = ""
-
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content
-          if (content) {
-            accumulated += content
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "chunk", content })}\n\n`)
-            )
-          }
-        }
-
-        // Parse the complete JSON result
-        try {
-          const parsed = JSON.parse(accumulated)
+        if (!compliance.passed) {
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
-                type: "done",
-                script: parsed.script || "",
-                subjectLine: parsed.subject_line || "",
-                keyPoints: parsed.key_points || [],
-                compliancePassed: parsed.compliance_check?.passed ?? true,
-                complianceWarnings: parsed.compliance_check?.warnings || [],
+                type: "error",
+                code: "COMPLIANCE_VIOLATION",
+                message: "话术未通过医疗合规审查，请修改后重试",
               })}\n\n`
             )
           )
-        } catch {
+          return
+        }
+
+        await recordScriptGeneration({
+          orgId: task.orgId,
+          taskId: task.id,
+          customerId,
+          consultantId: session.user.id,
+          inputSnapshot: {
+            customerTags,
+            objective: task.goal || "跟进客户",
+            scriptDirection: typeof scriptData.direction === "string" ? scriptData.direction : "",
+            hookContent:
+              typeof scriptData.hook === "object" && scriptData.hook !== null &&
+              "content" in scriptData.hook && typeof scriptData.hook.content === "string"
+                ? scriptData.hook.content
+                : "",
+            tone: scriptData.tone || "warm",
+          },
+          result: scriptResult,
+          compliance,
+        })
+
+        for (let start = 0; start < scriptResult.script.length; start += CHUNK_SIZE) {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "error", message: "解析结果失败" })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "chunk",
+                content: scriptResult.script.slice(start, start + CHUNK_SIZE),
+              })}\n\n`
+            )
           )
         }
 
-        controller.close()
-      } catch (error) {
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message: error instanceof Error ? error.message : "生成失败" })}\n\n`
+            `data: ${JSON.stringify({
+              type: "done",
+              script: scriptResult.script,
+              subjectLine: scriptResult.subject_line,
+              keyPoints: scriptResult.key_points,
+              compliancePassed: true,
+              complianceWarnings: compliance.violations
+                .filter((violation) => violation.type === "warning")
+                .map((violation) => `${violation.content}：${violation.suggestion}`),
+            })}\n\n`
           )
         )
+      } catch (error) {
+        console.error("Stream script generation failed:", error)
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "error", message: "话术生成失败，请稍后重试" })}\n\n`)
+        )
+      } finally {
         controller.close()
       }
     },

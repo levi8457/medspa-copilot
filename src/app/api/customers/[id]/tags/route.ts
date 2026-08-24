@@ -69,7 +69,11 @@ export async function POST(
 
     if (action === "update" && tagId) {
       const existingTag = await prisma.customerTag.findUnique({ where: { id: tagId } })
-      if (!existingTag || existingTag.customerId !== customerId) {
+      if (
+        !existingTag ||
+        existingTag.customerId !== customerId ||
+        existingTag.orgId !== session.user.orgId
+      ) {
         return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "标签不存在" } }, { status: 404 })
       }
 
@@ -100,7 +104,11 @@ export async function POST(
 
     if (action === "delete" && tagId) {
       const existingTag = await prisma.customerTag.findUnique({ where: { id: tagId } })
-      if (!existingTag || existingTag.customerId !== customerId) {
+      if (
+        !existingTag ||
+        existingTag.customerId !== customerId ||
+        existingTag.orgId !== session.user.orgId
+      ) {
         return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "标签不存在" } }, { status: 404 })
       }
 

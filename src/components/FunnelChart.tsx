@@ -13,6 +13,12 @@ interface FunnelChartProps {
   showRate?: boolean
 }
 
+interface FunnelTooltipParams {
+  name: string
+  value: number
+  data: { rate?: number }
+}
+
 export function FunnelChart({ data, showRate = false }: FunnelChartProps) {
   const c = {
     bg: cssVar("--background-secondary"),
@@ -48,7 +54,7 @@ export function FunnelChart({ data, showRate = false }: FunnelChartProps) {
         label: {
           show: true,
           position: "inside",
-          formatter: (params: any) => {
+          formatter: (params: FunnelTooltipParams) => {
             const rate = params.data.rate
             return showRate && rate !== undefined
               ? `${params.name}\n${params.value} (${rate}%)`

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/db"
 import { z } from "zod"
-import { withTenantFilter } from "@/lib/db-tenant"
+import { tenantWhere } from "@/lib/db-tenant"
 
 // 客户创建验证
 const createCustomerSchema = z.object({
@@ -28,31 +28,37 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get("page") || "1")
-    const pageSize = parseInt(searchParams.get("pageSize") || "20")
+    const requestedPage = Number(searchParams.get("page") || "1")
+    const requestedPageSize = Number(searchParams.get("pageSize") || "20")
+    const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+    const pageSize = Number.isInteger(requestedPageSize)
+      ? Math.min(Math.max(requestedPageSize, 1), 100)
+      : 20
     const status = searchParams.get("status")
     const search = searchParams.get("search")
     const sortBy = searchParams.get("sortBy") || "createdAt"
-    const sortOrder = searchParams.get("sortOrder") || "desc"
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc"
 
-    const where = withTenantFilter("Customer", session, {})
+    const filters: Record<string, unknown> = {}
 
     // 添加状态过滤
     if (status) {
-      where.status = status
+      filters.status = status
     }
 
     // 添加搜索
     if (search) {
-      where.OR = [
+      filters.OR = [
         { name: { contains: search } },
         { phone: { contains: search } },
         { wechat: { contains: search } },
       ]
     }
 
+    const where = tenantWhere("Customer", session, filters)
+
     // 构建排序
-    let orderBy: Record<string, string> = { createdAt: "desc" }
+    let orderBy: Record<string, "asc" | "desc"> = { createdAt: "desc" }
     if (sortBy === "name") {
       orderBy = { name: sortOrder }
     } else if (sortBy === "status") {

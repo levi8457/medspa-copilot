@@ -15,16 +15,25 @@ export interface TrialApplicationInfo {
   trialEndsAt: Date
 }
 
-function extractJson(stdout: string): any {
+type AgentlyResponse = {
+  ok?: boolean
+  data?: { confirmation_token?: string }
+}
+
+function extractJson(stdout: string): AgentlyResponse {
   const start = stdout.indexOf("{")
   const end = stdout.lastIndexOf("}")
   if (start === -1 || end === -1) {
     throw new Error("无法解析 agently-cli 输出")
   }
-  return JSON.parse(stdout.slice(start, end + 1))
+  const parsed: unknown = JSON.parse(stdout.slice(start, end + 1))
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("agently-cli 返回格式无效")
+  }
+  return parsed as AgentlyResponse
 }
 
-async function sendWithAgently(args: string[]): Promise<any> {
+async function sendWithAgently(args: string[]): Promise<AgentlyResponse> {
   const { stdout } = await execFileAsync(AGENTLY, args, {
     timeout: 30000,
     maxBuffer: 1024 * 1024,

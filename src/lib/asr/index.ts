@@ -1,3 +1,5 @@
+import { createHash, createHmac } from "node:crypto"
+
 /**
  * ASR (Automatic Speech Recognition) 适配层
  * 支持多种 ASR 供应商，统一接口
@@ -16,6 +18,8 @@ export interface ASRResult {
 
 export interface SpeakerSegment {
   speaker: "customer" | "consultant" | "unknown"
+  /** Provider-native speaker group. This is not a verified business role. */
+  speakerId?: string
   text: string
   startTime: number
   endTime: number
@@ -78,6 +82,8 @@ function createMockASR(): ASRProvider {
   return {
     name: "mock",
     async transcribe(audioUrl: string, options?: ASROptions): Promise<ASRResult> {
+      void audioUrl
+      void options
       // 模拟 ASR 处理延迟
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -181,7 +187,7 @@ function createAliyunASR(): ASRProvider {
         const pollData = await pollResponse.json()
 
         if (pollData.status === "SUCCESS") {
-          return parseAliyunASRResult(pollData, options)
+          return parseAliyunASRResult(pollData)
         }
 
         if (pollData.status === "FAILED") {
@@ -199,7 +205,7 @@ function createAliyunASR(): ASRProvider {
 /**
  * 解析阿里云 ASR 返回结果
  */
-function parseAliyunASRResult(data: Record<string, unknown>, options?: ASROptions): ASRResult {
+function parseAliyunASRResult(data: Record<string, unknown>): ASRResult {
   const result = data.result as Record<string, unknown> | undefined
 
   if (!result || !Array.isArray(result.sentences)) {
@@ -216,16 +222,10 @@ function parseAliyunASRResult(data: Record<string, unknown>, options?: ASROption
 
   const segments: SpeakerSegment[] = sentences.map((sentence) => {
     const speakerId = sentence.speaker_id as number | undefined
-    // 偶数 speaker_id 为咨询师，奇数为客户（可根据实际情况调整）
-    const speaker: "customer" | "consultant" | "unknown" =
-      speakerId === undefined
-        ? "unknown"
-        : speakerId % 2 === 0
-        ? "consultant"
-        : "customer"
 
     return {
-      speaker,
+      speaker: "unknown",
+      speakerId: speakerId?.toString(),
       text: (sentence.text as string) || "",
       startTime: (sentence.begin_time as number) || 0,
       endTime: (sentence.end_time as number) || 0,
@@ -253,18 +253,205 @@ function createTencentASR(): ASRProvider {
   return {
     name: "tencent",
     async transcribe(audioUrl: string, options?: ASROptions): Promise<ASRResult> {
-      // TODO: 实现腾讯云 ASR 集成
-      throw new Error("腾讯云 ASR 尚未实现，请使用 mock 模式或配置其他供应商")
+      const secretId = process.env.TENCENT_SECRET_ID
+      const secretKey = process.env.TENCENT_SECRET_KEY
+      if (!secretId || !secretKey) {
+        throw new Error("腾讯云 ASR 未配置：请设置 TENCENT_SECRET_ID 和 TENCENT_SECRET_KEY")
+      }
+
+      const region = process.env.TENCENT_ASR_REGION || "ap-guangzhou"
+      const submitResult = await callTencentASR<TencentCreateTaskResponse>(
+        "CreateRecTask",
+        {
+          EngineModelType: "16k_zh_en_2.0",
+          ChannelNum: 1,
+          ResTextFormat: 2,
+          SpeakerDiarization: options?.enableSpeakerDiarization === false ? 0 : 1,
+          SpeakerNumber: options?.speakerCount ?? 0,
+          Url: audioUrl,
+          HotwordId: process.env.TENCENT_ASR_HOTWORD_ID || undefined,
+        },
+        { secretId, secretKey, region }
+      )
+
+      const taskId = submitResult.Data?.TaskId
+      if (!taskId) {
+        throw new Error("腾讯云 ASR 未返回任务 ID")
+      }
+
+      const intervalMs = getPositiveIntegerEnv("TENCENT_ASR_POLL_INTERVAL_MS", 3000)
+      const maxAttempts = getPositiveIntegerEnv("TENCENT_ASR_MAX_POLL_ATTEMPTS", 600)
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await sleep(intervalMs)
+        const statusResult = await callTencentASR<TencentDescribeTaskResponse>(
+          "DescribeTaskStatus",
+          { TaskId: taskId },
+          { secretId, secretKey, region }
+        )
+        const data = statusResult.Data
+        if (!data) {
+          throw new Error("腾讯云 ASR 未返回任务状态")
+        }
+        if (data.StatusStr === "success") {
+          return parseTencentASRResult(data)
+        }
+        if (data.StatusStr === "failed") {
+          throw new Error(`腾讯云 ASR 处理失败: ${data.ErrorMsg || "未知错误"}`)
+        }
+      }
+
+      throw new Error("腾讯云 ASR 处理超时")
     },
   }
 }
 
+const TENCENT_ASR_HOST = "asr.tencentcloudapi.com"
+const TENCENT_ASR_VERSION = "2019-06-14"
+
+interface TencentCredentials {
+  secretId: string
+  secretKey: string
+  region: string
+}
+
+interface TencentCreateTaskResponse {
+  Data?: { TaskId?: number }
+}
+
+interface TencentDescribeTaskResponse {
+  Data?: TencentTaskData
+}
+
+interface TencentTaskData {
+  StatusStr?: "waiting" | "doing" | "success" | "failed"
+  ErrorMsg?: string
+  Result?: string
+  ResultDetail?: TencentSentence[]
+  AudioDuration?: number
+}
+
+interface TencentSentence {
+  SliceSentence?: string
+  StartMs?: number
+  EndMs?: number
+  SpeakerId?: number
+  Words?: Array<{ Confidence?: number }>
+}
+
+async function callTencentASR<T>(
+  action: "CreateRecTask" | "DescribeTaskStatus",
+  payload: Record<string, unknown>,
+  credentials: TencentCredentials
+): Promise<T> {
+  const timestamp = Math.floor(Date.now() / 1000)
+  const date = new Date(timestamp * 1000).toISOString().slice(0, 10)
+  const payloadText = JSON.stringify(payload)
+  const canonicalHeaders = `content-type:application/json; charset=utf-8\nhost:${TENCENT_ASR_HOST}\n`
+  const signedHeaders = "content-type;host"
+  const canonicalRequest = [
+    "POST",
+    "/",
+    "",
+    canonicalHeaders,
+    signedHeaders,
+    sha256(payloadText),
+  ].join("\n")
+  const credentialScope = `${date}/asr/tc3_request`
+  const stringToSign = [
+    "TC3-HMAC-SHA256",
+    timestamp,
+    credentialScope,
+    sha256(canonicalRequest),
+  ].join("\n")
+  const secretDate = hmac(`TC3${credentials.secretKey}`, date)
+  const secretService = hmac(secretDate, "asr")
+  const secretSigning = hmac(secretService, "tc3_request")
+  const signature = hmac(secretSigning, stringToSign, "hex")
+  const authorization = [
+    "TC3-HMAC-SHA256",
+    `Credential=${credentials.secretId}/${credentialScope},`,
+    `SignedHeaders=${signedHeaders},`,
+    `Signature=${signature}`,
+  ].join(" ")
+
+  const response = await fetch(`https://${TENCENT_ASR_HOST}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      Host: TENCENT_ASR_HOST,
+      Authorization: authorization,
+      "X-TC-Action": action,
+      "X-TC-Version": TENCENT_ASR_VERSION,
+      "X-TC-Region": credentials.region,
+      "X-TC-Timestamp": timestamp.toString(),
+    },
+    body: payloadText,
+  })
+  const responseBody = await response.json() as { Response?: T & { Error?: { Code?: string } } }
+  const errorCode = responseBody.Response?.Error?.Code
+  if (!response.ok || errorCode) {
+    throw new Error(`腾讯云 ASR API 调用失败: ${errorCode || response.status}`)
+  }
+  if (!responseBody.Response) {
+    throw new Error("腾讯云 ASR 返回格式无效")
+  }
+  return responseBody.Response
+}
+
+function parseTencentASRResult(data: TencentTaskData): ASRResult {
+  const sentences = data.ResultDetail || []
+  const segments = sentences.map((sentence): SpeakerSegment => ({
+    speaker: "unknown",
+    speakerId: sentence.SpeakerId?.toString(),
+    text: sentence.SliceSentence || "",
+    startTime: (sentence.StartMs || 0) / 1000,
+    endTime: (sentence.EndMs || 0) / 1000,
+    confidence: averageConfidence(sentence.Words),
+  }))
+  const transcript = data.Result || segments.map((segment) => segment.text).join("")
+  const duration = typeof data.AudioDuration === "number"
+    ? data.AudioDuration / 1000
+    : segments.at(-1)?.endTime || 0
+
+  return {
+    transcript,
+    speakerDiarization: segments,
+    duration,
+    confidence: segments.length
+      ? segments.reduce((sum, segment) => sum + segment.confidence, 0) / segments.length
+      : 0,
+  }
+}
+
+function averageConfidence(words: TencentSentence["Words"]): number {
+  const values = words?.map((word) => word.Confidence).filter((value): value is number => typeof value === "number") || []
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0.9
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex")
+}
+
+function hmac(key: string | Buffer, value: string, encoding?: "hex"): string | Buffer {
+  const digest = createHmac("sha256", key).update(value, "utf8")
+  return encoding ? digest.digest(encoding) : digest.digest()
+}
+
+function getPositiveIntegerEnv(name: string, fallback: number): number {
+  const value = Number(process.env[name])
+  return Number.isInteger(value) && value > 0 ? value : fallback
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
 /**
  * 将说话人分离结果转换为带标注的转写文本
- * 格式: [consultant] xxx\n[customer] xxx
+ * Format: [unknown:speaker_0] xxx. Provider speaker groups are not business roles.
  */
 export function formatTranscriptWithSpeakers(segments: SpeakerSegment[]): string {
   return segments
-    .map((seg) => `[${seg.speaker}] ${seg.text}`)
+    .map((seg) => `[${seg.speaker}${seg.speakerId ? `:${seg.speakerId}` : ""}] ${seg.text}`)
     .join("\n")
 }

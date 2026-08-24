@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
   if (status) where.status = status
   if (category) where.category = category
 
+  // Consultants may only see their own drafts/rejections and active approved templates.
+  if (session.user.role === "consultant") {
+    where.OR = [
+      { creatorId: session.user.id },
+      { status: "approved", isActive: true },
+    ]
+  }
+
   const args = withTenantFilter("SopTemplate", session, {
     where,
     orderBy: { createdAt: "desc" },

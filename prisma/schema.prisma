@@ -1,14 +1,14 @@
 // Prisma Schema - 医美 AI 智能管家
 // 多租户架构：所有业务表必须包含 orgId
-// SQLite 版本（开发测试用）
+// PostgreSQL is the canonical runtime database for local and production use.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ==================== 认证相关 ====================
@@ -46,6 +46,7 @@ model Organization {
   campaigns   MarketingCampaign[]
   surveys     SatisfactionSurvey[]
   approvals   ApprovalFlow[]
+  scriptGenerations ScriptGeneration[]
 
   @@index([slug])
   @@map("organizations")
@@ -183,7 +184,7 @@ model CustomerTag {
   customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   audioRecord    AudioRecord? @relation(fields: [audioRecordId], references: [id])
 
-  @@unique([customerId, dimension])
+  @@unique([customerId, dimension, value])
   @@index([customerId])
   @@index([orgId])
   @@index([dimension])
@@ -223,6 +224,7 @@ model FollowUpPlan {
   id              String   @id @default(cuid())
   orgId           String
   customerId      String
+  sourceAudioRecordId String? @unique
   title           String
   description     String?
   strategy        String?  // JSON 字符串
@@ -259,6 +261,7 @@ model FollowUpTask {
   plan            FollowUpPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   consultant      User         @relation(fields: [consultantId], references: [id], onDelete: Cascade)
   customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  scriptGenerations ScriptGeneration[]
 
   @@index([orgId])
   @@index([consultantId])
@@ -285,6 +288,31 @@ model TimelineEvent {
   @@index([customerId])
   @@index([occurredAt])
   @@map("timeline_events")
+}
+
+model ScriptGeneration {
+  id               String   @id @default(cuid())
+  orgId            String
+  taskId           String
+  customerId       String
+  consultantId     String
+  inputSnapshot    String
+  output           String
+  subjectLine      String?
+  keyPoints        String?
+  complianceResult String
+  model            String   @default("deepseek-chat")
+  createdAt        DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  task         FollowUpTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([taskId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([createdAt])
+  @@map("script_generations")
 }
 
 model ConsumptionRecord {

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 const Confidence = z.enum(["high", "medium", "low"])
-const Speaker = z.enum(["customer", "consultant"])
+const Speaker = z.enum(["customer", "consultant", "unknown"])
 
 const Evidence = z.object({
   field: z.string(),

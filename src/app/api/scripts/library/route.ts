@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 
@@ -29,30 +30,32 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category")
     const scope = searchParams.get("scope") // all / org / personal
 
-    const where: any = { orgId }
-
-    if (scope === "org") {
-      where.isOrgLevel = true
-    } else if (scope === "personal") {
-      where.isOrgLevel = false
-      where.creatorId = userId
-    } else {
-      where.OR = [
-        { isOrgLevel: true },
-        { isOrgLevel: false, creatorId: userId },
-      ]
-    }
+    const visibilityWhere: Prisma.ScriptLibraryWhereInput = scope === "org"
+      ? { isOrgLevel: true }
+      : scope === "personal"
+        ? { isOrgLevel: false, creatorId: userId }
+        : {
+            OR: [
+              { isOrgLevel: true },
+              { isOrgLevel: false, creatorId: userId },
+            ],
+          }
+    const andFilters: Prisma.ScriptLibraryWhereInput[] = [visibilityWhere]
 
     if (category) {
-      where.category = category
+      andFilters.push({ category })
     }
 
     if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { content: { contains: search } },
-      ]
+      andFilters.push({
+        OR: [
+          { title: { contains: search } },
+          { content: { contains: search } },
+        ],
+      })
     }
+
+    const where: Prisma.ScriptLibraryWhereInput = { orgId, AND: andFilters }
 
     const [scripts, stats] = await Promise.all([
       prisma.scriptLibrary.findMany({

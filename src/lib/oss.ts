@@ -37,7 +37,7 @@ export function isOSSConfigured(): boolean {
  * 上传文件到 OSS
  * @param file 文件 Buffer
  * @param key 存储路径（如 recordings/xxx.mp3）
- * @returns OSS 公开访问 URL
+ * @returns Private object key. Consumers must request a short-lived signed URL.
  */
 export async function uploadToOSS(file: Buffer, key: string): Promise<string> {
   const oss = getOSSClient()
@@ -49,16 +49,8 @@ export async function uploadToOSS(file: Buffer, key: string): Promise<string> {
   }
 
   try {
-    const result = await oss.put(key, file)
-
-    // 返回公开访问 URL
-    // 如果 bucket 是公共读，直接用 result.url
-    // 如果是私有 bucket，需要生成签名 URL
-    if (process.env.OSS_CDN_DOMAIN) {
-      return `${process.env.OSS_CDN_DOMAIN}/${key}`
-    }
-
-    return result.url
+    await oss.put(key, file)
+    return key
   } catch (error) {
     console.error("[OSS] 上传失败:", error)
     throw new Error("文件上传失败，请检查 OSS 配置")

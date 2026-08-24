@@ -419,7 +419,7 @@ export default function ProfileReportPage() {
                   暂无画像报告
                 </h3>
                 <p className="text-[var(--foreground-secondary)] text-sm mb-4">
-                  点击右上角"生成新报告"，AI 将基于客户标签、互动、消费等数据生成 7 维度深度画像
+                  点击右上角“生成新报告”，AI 将基于客户标签、互动、消费等数据生成 7 维度深度画像
                 </p>
                 <button
                   onClick={handleGenerate}

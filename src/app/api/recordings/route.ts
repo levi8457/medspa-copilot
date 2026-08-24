@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { withTenantFilter, getUserId } from "@/lib/db-tenant"
 import { addAudioProcessingJob } from "@/lib/queue"
-import { processAudioJob } from "@/workers/audio-processor"
 import { uploadToOSS, generateRecordingKey } from "@/lib/oss"
 
 // GET - 获取录音列表
@@ -43,7 +42,10 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,
     data: {
-      recordings,
+      recordings: recordings.map(({ ossUrl: _storageKey, ...recording }) => {
+        void _storageKey
+        return { ...recording, audioUrl: `/api/recordings/${recording.id}/media` }
+      }),
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     },
   })
@@ -123,15 +125,25 @@ export async function POST(request: NextRequest) {
         ossUrl,
       })
     } catch (queueError) {
-      console.error("入队失败，降级为同步处理:", queueError)
-      // 降级：直接调用处理函数（不经过队列）
-      processAudioJob({
-        recordingId: recording.id,
-        orgId: session.user.orgId,
-        customerId,
-        consultantId: userId,
-        ossUrl,
-      }).catch((err) => console.error("同步处理失败:", err))
+      console.error("Audio processing job enqueue failed:", queueError)
+      await prisma.audioRecord.update({
+        where: { id: recording.id },
+        data: {
+          status: "failed",
+          errorMessage: "解析任务创建失败，请稍后重试",
+        },
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "QUEUE_UNAVAILABLE",
+            message: "录音已上传，但解析服务暂不可用，请稍后重试",
+          },
+          data: { id: recording.id },
+        },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json({

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * 生成 PWA 图标（纯 JS，无依赖）
  * 生成 192x192 和 512x512 的 PNG 图标，使用医疗十字 + 科技感设计

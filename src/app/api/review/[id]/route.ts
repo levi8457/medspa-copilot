@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getUserId } from "@/lib/db-tenant"
+import { z } from "zod"
+
+const reviewSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  comment: z.string().trim().max(2_000).optional(),
+  type: z.literal("sop"),
+})
 
 // PATCH - 审核操作
 export async function PATCH(
@@ -20,47 +27,39 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { action, comment, type } = body
-
-  if (!action || !["approve", "reject"].includes(action)) {
-    return NextResponse.json({ success: false, error: { code: "INVALID_ACTION", message: "无效的审核操作" } }, { status: 400 })
+  const parsedBody = reviewSchema.safeParse(body)
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "VALIDATION_ERROR", message: parsedBody.error.issues[0].message } },
+      { status: 400 }
+    )
   }
+  const { action, comment, type } = parsedBody.data
 
   const userId = getUserId(session)
 
   try {
-    // 根据类型更新不同的表
-    if (type === "sop") {
-      await prisma.sopTemplate.update({
-        where: { id },
-        data: {
-          status: action === "approve" ? "approved" : "rejected",
-          reviewComment: comment,
-          reviewedBy: userId,
-          reviewedAt: new Date(),
-          isActive: action === "approve",
-        },
-      })
-    } else if (type === "tag") {
-      // 标签审核：标记为人工修改，记录修改人和时间；驳回时置信度置 0
-      await prisma.customerTag.update({
-        where: { id },
-        data: {
-          isManuallyModified: true,
-          modifiedBy: userId,
-          modifiedAt: new Date(),
-          ...(action === "reject" && { confidence: 0 }),
-        },
-      })
-    } else if (type === "strategy") {
-      // 策略审核：通过置 active，驳回置 rejected
-      await prisma.followUpPlan.update({
-        where: { id },
-        data: {
-          status: action === "approve" ? "active" : "rejected",
-        },
-      })
+    const sop = await prisma.sopTemplate.findFirst({
+      where: { id, orgId: session.user.orgId, status: "submitted" },
+      select: { id: true },
+    })
+    if (!sop) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_STATE", message: "SOP 不存在或当前不可审核" } },
+        { status: 409 }
+      )
     }
+
+    await prisma.sopTemplate.update({
+      where: { id },
+      data: {
+        status: action === "approve" ? "approved" : "rejected",
+        reviewComment: comment,
+        reviewedBy: userId,
+        reviewedAt: new Date(),
+        isActive: action === "approve",
+      },
+    })
 
     // 记录审计日志
     await prisma.auditLog.create({

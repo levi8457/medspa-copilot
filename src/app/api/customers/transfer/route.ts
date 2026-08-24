@@ -32,51 +32,69 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: "无权操作此客户" } }, { status: 403 })
   }
 
-  // Verify target consultant belongs to same org
-  const targetUser = await prisma.user.findFirst({
-    where: { id: targetConsultantId, orgId: session.user.orgId, role: "consultant" },
-  })
-  if (!targetUser) {
-    return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "目标咨询师不存在" } }, { status: 404 })
-  }
-
   // Get current customer
   const customer = await prisma.customer.findUnique({ where: { id: customerId } })
   if (!customer) {
     return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "客户不存在" } }, { status: 404 })
   }
 
+  // A transfer may only assign a consultant from the customer's organization.
+  const targetUser = await prisma.user.findFirst({
+    where: { id: targetConsultantId, orgId: customer.orgId, role: "consultant" },
+  })
+  if (!targetUser) {
+    return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "目标咨询师不存在" } }, { status: 404 })
+  }
+
   const oldConsultantId = customer.consultantId
 
-  // Transfer customer
-  await prisma.customer.update({
-    where: { id: customerId },
-    data: { consultantId: targetConsultantId },
+  const reassignedPendingTaskCount = await prisma.$transaction(async (tx) => {
+    await tx.customer.update({
+      where: { id: customerId },
+      data: { consultantId: targetConsultantId },
+    })
+
+    // Completed and skipped tasks remain with their original executor for audit.
+    const reassignedTasks = await tx.followUpTask.updateMany({
+      where: {
+        orgId: customer.orgId,
+        customerId,
+        ...(oldConsultantId ? { consultantId: oldConsultantId } : {}),
+        status: "pending",
+      },
+      data: { consultantId: targetConsultantId },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        orgId: customer.orgId,
+        userId: session.user.id,
+        action: "customer.transfer",
+        resourceType: "Customer",
+        resourceId: customerId,
+        oldValue: JSON.stringify({ consultantId: oldConsultantId }),
+        newValue: JSON.stringify({
+          consultantId: targetConsultantId,
+          reassignedPendingTaskCount: reassignedTasks.count,
+        }),
+      },
+    })
+
+    await tx.timelineEvent.create({
+      data: {
+        orgId: customer.orgId,
+        customerId,
+        type: "note",
+        title: "客户转移",
+        content: `客户已从咨询师转移给 ${targetUser.name}，同步转移 ${reassignedTasks.count} 个待办任务`,
+      },
+    })
+
+    return reassignedTasks.count
   })
 
-  // Create audit log
-  await prisma.auditLog.create({
-    data: {
-      orgId: session.user.orgId,
-      userId: session.user.id,
-      action: "customer.transfer",
-      resourceType: "Customer",
-      resourceId: customerId,
-      oldValue: JSON.stringify({ consultantId: oldConsultantId }),
-      newValue: JSON.stringify({ consultantId: targetConsultantId }),
-    },
+  return NextResponse.json({
+    success: true,
+    data: { customerId, targetConsultantId, reassignedPendingTaskCount },
   })
-
-  // Create timeline event
-  await prisma.timelineEvent.create({
-    data: {
-      orgId: session.user.orgId,
-      customerId,
-      type: "note",
-      title: "客户转移",
-      content: `客户已从咨询师转移给 ${targetUser.name}`,
-    },
-  })
-
-  return NextResponse.json({ success: true, data: { customerId, targetConsultantId } })
 }

@@ -20,7 +20,7 @@
 - **存储**：S3 兼容 OSS（录音文件）
 - **认证**：NextAuth.js（JWT + RBAC，三角色：super_admin / org_admin / consultant）
 - **实时**：SSE（解析进度推送、LLM 流式输出）
-- **AI**：DeepSeek API（chat 用于标签/话术生成，reasoner 用于复杂策略推理）；ASR 走云厂商 API
+- **AI**：DeepSeek API（chat 用于标签/话术生成，reasoner 用于复杂策略推理）；ASR 使用腾讯云录音文件识别 `16k_zh_en_2.0`
 - **音频**：wavesurfer.js；**流程编排**：React Flow（SOP 编辑器）
 
 ## 3. 项目结构
@@ -40,6 +40,13 @@
 - 话术生成后**必须**经过 `compliance-check` 合规过滤才能返回给前端
 - Prompt 修改只能改 `prompts/` 下的文件，不要在代码里硬编码 Prompt
 - 长耗时任务（ASR + 解析）一律走 BullMQ，禁止在 API 路由中同步等待
+
+### 4.2.1 ASR 接入规范（腾讯云）
+- F1 的生产 ASR 供应商为腾讯云“录音文件识别”，默认引擎 `16k_zh_en_2.0`；通过 `src/lib/asr/` 适配层调用，禁止在路由或 Worker 中直接拼接云 API。
+- 默认开启自动说话人分离、词级时间戳和医美热词表；ASR 原始 `speakerId` 仅表示分组，未经角色认证不得映射为 `customer` 或 `consultant`。
+- 角色分离/声纹仅可为已取得单独授权的咨询师启用。不得采集、注册或保留客户声纹；角色无法可靠确认时必须标为 `unknown`，由后续人工或业务规则处理。
+- 录音及转写内容属于敏感业务数据：OSS 使用短期签名 URL，ASR 凭据只存服务端环境变量，日志不得记录原始音频 URL、完整转写或云密钥。
+- 通过热词表维护项目名、品牌名、药械名及医生名；热词更新需有版本记录和抽样准确率回归，不得以提示词修正 ASR 原文。
 
 ### 4.3 UI 开发规范（未来科技感）
 - **暗色优先**：默认暗色主题，背景 `#0A0E1A`，所有颜色用 `theme.css` 中的 CSS 变量，禁止硬编码色值
@@ -78,8 +85,12 @@ DEEPSEEK_API_KEY=        # DeepSeek API
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 ASR_PROVIDER=            # aliyun | tencent
 ASR_API_KEY=
+TENCENT_SECRET_ID=       # 腾讯云 API 密钥 ID
+TENCENT_SECRET_KEY=      # 腾讯云 API 密钥 Key
+TENCENT_ASR_REGION=ap-guangzhou
 OSS_ENDPOINT= / OSS_BUCKET= / OSS_ACCESS_KEY= / OSS_SECRET_KEY=
 NEXTAUTH_SECRET= / NEXTAUTH_URL=
+```
 
 ## 7. 常用命令
 

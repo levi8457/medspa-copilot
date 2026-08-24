@@ -711,7 +711,7 @@ export default function HomePage() {
                 <GlowCard variant={item.variant} className="p-6 h-full">
                   <Quote className="w-8 h-8 text-[var(--primary)]/30 mb-4" />
                   <p className="text-[var(--foreground-secondary)] mb-6 text-sm leading-relaxed">
-                    "{item.content}"
+                    &ldquo;{item.content}&rdquo;
                   </p>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center text-[var(--background)] font-bold">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 
@@ -21,6 +22,7 @@ export async function PUT(
 
     const recommendation = await prisma.projectRecommendation.findUnique({
       where: { id },
+      include: { customer: { select: { consultantId: true } } },
     })
 
     if (!recommendation) {
@@ -30,14 +32,17 @@ export async function PUT(
       )
     }
 
-    if (recommendation.orgId !== session.user.orgId) {
+    if (
+      recommendation.orgId !== session.user.orgId ||
+      (session.user.role === "consultant" && recommendation.customer.consultantId !== session.user.id)
+    ) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "无权操作" } },
         { status: 403 }
       )
     }
 
-    const updateData: any = { status }
+    const updateData: Prisma.ProjectRecommendationUpdateInput = { status }
     if (status === "adopted") {
       updateData.adoptedAt = new Date()
     } else if (status === "converted") {

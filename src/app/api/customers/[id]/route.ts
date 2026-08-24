@@ -147,14 +147,25 @@ export async function PUT(
       for (const tag of tags) {
         await prisma.customerTag.upsert({
           where: {
-            customerId_dimension: { customerId: id, dimension: tag.dimension },
+            customerId_dimension_value: {
+              customerId: id,
+              dimension: tag.dimension,
+              value: tag.value,
+            },
           },
-          update: { value: tag.value },
+          update: {
+            isManuallyModified: true,
+            modifiedBy: session.user.id,
+            modifiedAt: new Date(),
+          },
           create: {
             orgId: session.user.orgId,
             customerId: id,
             dimension: tag.dimension,
             value: tag.value,
+            isManuallyModified: true,
+            modifiedBy: session.user.id,
+            modifiedAt: new Date(),
           },
         })
       }

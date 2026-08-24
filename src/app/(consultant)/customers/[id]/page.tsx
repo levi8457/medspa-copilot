@@ -374,7 +374,7 @@ export default async function CustomerDetailPage({
                       </span>
                     </div>
                     {record.status === "done" && (
-                      <AudioPlayer url={record.ossUrl} />
+                      <AudioPlayer url={`/api/recordings/${record.id}/media`} />
                     )}
                   </div>
                 ))}
