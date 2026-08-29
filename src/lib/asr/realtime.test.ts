@@ -12,7 +12,8 @@ test("Tencent realtime ASR session uses a short expiry and never exposes SecretK
   }, 1_700_000_000)
 
   assert.equal(session.expiresAt, 1_700_000_300)
-  assert.match(session.url, /^wss:\/\/asr\.cloud\.tencent\.com\/asr\/v2\/1250000000\?/) 
+  const expectedHost = /^wss:\/\/asr\.cloud\.tencent\.com\/asr\/v2\/1250000000\?/
+  assert.match(session.url, expectedHost)
   assert.match(session.url, /secretid=AKID-example/)
   assert.match(session.url, /hotword_id=hotword-1/)
   assert.doesNotMatch(session.url, /secret-key-must-not-appear-in-url/)
