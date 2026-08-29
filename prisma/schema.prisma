@@ -47,6 +47,11 @@ model Organization {
   surveys     SatisfactionSurvey[]
   approvals   ApprovalFlow[]
   scriptGenerations ScriptGeneration[]
+  consultationSessions ConsultationSession[]
+  recordingConsents RecordingConsent[]
+  realtimeTranscriptSegments RealtimeTranscriptSegment[]
+  realtimeSuggestions RealtimeSuggestion[]
+  deviceSessions DeviceSession[]
 
   @@index([slug])
   @@map("organizations")
@@ -74,6 +79,9 @@ model User {
   auditLogs     AuditLog[]
   accounts      Account[]
   sessions      Session[]
+  consultationSessions ConsultationSession[] @relation("ConsultantSessions")
+  recordingConsents RecordingConsent[] @relation("ConsentRecorder")
+  deviceSessions DeviceSession[]
 
   @@index([orgId])
   @@index([email])
@@ -156,6 +164,8 @@ model Customer {
   schedules       Schedule[]
   profileReports  CustomerProfileReport[]
   healthScores    CustomerHealthScore[]
+  consultationSessions ConsultationSession[]
+  recordingConsents RecordingConsent[]
 
   @@index([orgId])
   @@index([consultantId])
@@ -288,6 +298,124 @@ model TimelineEvent {
   @@index([customerId])
   @@index([occurredAt])
   @@map("timeline_events")
+}
+
+// ==================== 咨询师移动端现场咨询 ====================
+
+model ConsultationSession {
+  id                String   @id @default(cuid())
+  orgId             String
+  customerId        String
+  consultantId      String
+  status            String   @default("draft") // draft / recording / processing / completed / cancelled
+  consentVersion    String?
+  consentRecordedAt DateTime?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization       Organization                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer           Customer                    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  consultant         User                        @relation("ConsultantSessions", fields: [consultantId], references: [id], onDelete: Cascade)
+  consents           RecordingConsent[]
+  transcriptSegments RealtimeTranscriptSegment[]
+  suggestions        RealtimeSuggestion[]
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultantId])
+  @@index([status])
+  @@map("consultation_sessions")
+}
+
+model RecordingConsent {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  customerId            String
+  consultationSessionId String
+  recordedById          String
+  policyVersion         String
+  consentedAt           DateTime @default(now())
+  withdrawnAt           DateTime?
+  createdAt             DateTime @default(now())
+
+  organization        Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer            Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  consultationSession ConsultationSession @relation(fields: [consultationSessionId], references: [id], onDelete: Cascade)
+  recordedBy          User                @relation("ConsentRecorder", fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([customerId])
+  @@index([consultationSessionId])
+  @@index([recordedById])
+  @@map("recording_consents")
+}
+
+model RealtimeTranscriptSegment {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  consultationSessionId String
+  sequence              Int
+  text                  String
+  state                 String   @default("confirmed") // partial / confirmed
+  speakerGroup          String?  // A / B / unknown; never customer / consultant without verified consented voice profile
+  startedAtMs           Int?
+  endedAtMs             Int?
+  createdAt             DateTime @default(now())
+
+  organization        Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  consultationSession ConsultationSession @relation(fields: [consultationSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([consultationSessionId, sequence])
+  @@index([orgId])
+  @@index([consultationSessionId])
+  @@map("realtime_transcript_segments")
+}
+
+model RealtimeSuggestion {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  consultationSessionId String
+  triggerText           String
+  sourceType            String   // org_script / ai
+  sourceId              String?
+  content               String
+  complianceResult      String
+  displayState          String   @default("shown") // shown / expanded / copied / dismissed
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization        Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  consultationSession ConsultationSession @relation(fields: [consultationSessionId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([consultationSessionId])
+  @@index([sourceType])
+  @@map("realtime_suggestions")
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  orgId       String
+  userId      String
+  deviceId    String
+  platform    String
+  pushToken   String?
+  isRevoked   Boolean  @default(false)
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([orgId])
+  @@index([userId])
+  @@index([isRevoked])
+  @@map("device_sessions")
 }
 
 model ScriptGeneration {
@@ -624,6 +752,7 @@ model ScriptLibrary {
   category        String   // 开场白/异议处理/升单话术/回访话术/活动通知/项目介绍/邀约话术
   tags            String?  // JSON: 标签数组
   isOrgLevel      Boolean  @default(false)
+  approvalStatus  String   @default("approved") // draft / submitted / approved / rejected / archived
   useCount        Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -633,6 +762,7 @@ model ScriptLibrary {
   @@index([orgId])
   @@index([category])
   @@index([isOrgLevel])
+  @@index([approvalStatus])
   @@map("script_library")
 }
 

@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:core": "tsx --test src/lib/db-tenant.test.ts src/lib/asr/index.test.ts",
+    "test:core": "tsx --test src/lib/db-tenant.test.ts src/lib/asr/index.test.ts src/lib/mobile/consultation.test.ts",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema prisma/schema.prisma",

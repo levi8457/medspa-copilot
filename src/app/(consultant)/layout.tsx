@@ -13,10 +13,12 @@ import {
   Calendar,
   TrendingUp,
   LogOut,
+  Smartphone,
 } from "lucide-react"
 
 const navigation = [
   { name: "工作台", href: "/dashboard", icon: Home },
+  { name: "移动工作台", href: "/mobile", icon: Smartphone },
   { name: "客户管理", href: "/customers", icon: Users },
   { name: "录音上传", href: "/recordings/upload", icon: FileAudio },
   { name: "跟进任务", href: "/tasks", icon: ClipboardList },
