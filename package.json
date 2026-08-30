@@ -8,6 +8,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "cap:sync:ios": "cap sync ios",
+    "ios:prepare": "node scripts/prepare-ios.mjs",
+    "ios:sync:release": "pnpm ios:prepare && cap sync ios",
+    "cap:open:ios": "cap open ios",
+    "cap:doctor": "cap doctor",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -23,6 +28,10 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.0",
     "@hookform/resolvers": "^5.4.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/client": "^6.11.1",
@@ -52,6 +61,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@tailwindcss/postcss": "^4",
     "@types/ali-oss": "^6.23.3",
     "@types/bcryptjs": "^2.4.6",

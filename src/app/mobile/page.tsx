@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Check, ClipboardCheck, Mic, Search, Sparkles, Square, UserRound } from "lucide-react"
+import Link from "next/link"
 import { GlowCard } from "@/components/futuristic/GlowCard"
 import { downsampleToPcm16 } from "@/lib/mobile/realtime-audio"
+import { listenForAppState, notifyError, notifySuccess } from "@/lib/mobile/native"
 
 type Task = {
   id: string
@@ -48,13 +50,34 @@ export default function ConsultantMobilePage() {
     ]).catch((error: unknown) => setNotice(error instanceof Error ? error.message : "加载失败")).finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    return () => {
+      const current = realtimeRefs.current
+      if (current.socket?.readyState === WebSocket.OPEN) current.socket.send(JSON.stringify({ type: "end" }))
+      current.socket?.close()
+      current.processor?.disconnect()
+      current.source?.disconnect()
+      current.stream?.getTracks().forEach((track) => track.stop())
+      void current.audioContext?.close()
+    }
+  }, [])
+
+  useEffect(() => listenForAppState((isActive) => {
+    if (!isActive && realtimeRefs.current.socket) {
+      stopRealtime()
+      setNotice("应用已切到后台，实时转写和麦克风已安全停止。返回后可重新开启。")
+    }
+  }), [])
+
   async function updateTask(taskId: string) {
     try {
       await apiFetch(`/api/tasks/${taskId}/status`, { method: "PATCH", body: JSON.stringify({ status: "done" }) })
       setTasks((current) => current.filter((task) => task.id !== taskId))
       setNotice("任务已完成")
+      void notifySuccess()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "任务更新失败")
+      void notifyError()
     }
   }
 
@@ -68,8 +91,10 @@ export default function ConsultantMobilePage() {
       setTranscriptSequence(0)
       setSuggestions([])
       setNotice("请先完成客户录音知情同意")
+      void notifySuccess()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "创建会话失败")
+      void notifyError()
     }
   }
 
@@ -79,8 +104,10 @@ export default function ConsultantMobilePage() {
       await apiFetch(`/api/mobile/consultations/${consultationId}/consent`, { method: "POST", body: JSON.stringify({ consented: true }) })
       setHasConsent(true)
       setNotice("已记录客户同意，现在可以保存确认转写并获取建议")
+      void notifySuccess()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "记录同意失败")
+      void notifyError()
     }
   }
 
@@ -185,6 +212,7 @@ export default function ConsultantMobilePage() {
       stopRealtime()
       setRealtimeState("error")
       setNotice(error instanceof Error ? error.message : "无法开启实时转写")
+      void notifyError()
     }
   }
 
@@ -196,9 +224,11 @@ export default function ConsultantMobilePage() {
       setConsultationId(null)
       setHasConsent(false)
       setSuggestions([])
-      setNotice("现场咨询已结束。录音上传和实时 ASR 接入将在下一阶段开放。")
+      setNotice("现场咨询已结束。已保存的实时转写和话术建议可在会话记录中追溯。")
+      void notifySuccess()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "结束会话失败")
+      void notifyError()
     }
   }
 
@@ -210,7 +240,7 @@ export default function ConsultantMobilePage() {
           <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)]">今天，先做好一件事</h1>
           <p className="mt-1 text-sm text-[var(--foreground-secondary)]">任务、现场记录与机构话术，都在这里。</p>
         </div>
-        <div className="rounded-full border border-[var(--primary)]/30 bg-[var(--background-card)] p-3 text-[var(--primary)]"><UserRound size={22} /></div>
+        <Link href="/mobile/account" aria-label="打开我的与隐私" className="rounded-full border border-[var(--primary)]/30 bg-[var(--background-card)] p-3 text-[var(--primary)]"><UserRound size={22} /></Link>
       </header>
 
       {notice && <div role="status" className="mb-4 rounded-lg border border-[var(--primary)]/25 bg-[var(--background-card)] px-3 py-2 text-sm text-[var(--foreground-secondary)]">{notice}</div>}
@@ -239,7 +269,7 @@ export default function ConsultantMobilePage() {
         </GlowCard>
       </section>
 
-      <footer className="mt-8 border-t border-[var(--border)] pt-4 text-xs leading-5 text-[var(--foreground-secondary)]"><Search className="mr-1 inline" size={14} />仅展示机构话术库中已审核内容。实时转写必须在客户同意后手动开启，停止或结束会话后会立即关闭麦克风。</footer>
+      <footer className="mt-8 border-t border-[var(--border)] pt-4 text-xs leading-5 text-[var(--foreground-secondary)]"><Search className="mr-1 inline" size={14} />仅展示机构话术库中已审核内容。实时转写必须在客户同意后手动开启，停止、结束会话或进入后台后会立即关闭麦克风。<Link href="/privacy" className="ml-2 text-[var(--primary)]">隐私政策</Link></footer>
     </main>
   )
 }
